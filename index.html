@@ -15,21 +15,27 @@
       --chipBorder:#d6dde6;
     }
     *{box-sizing:border-box}
+    /* iOS Safari viewport quirks: use svh + -webkit-fill-available */
+    html,body{height:100%;}
     body{
       margin:0;
       font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial;
       color:var(--text);
       background:linear-gradient(180deg, var(--bg1), var(--bg2) 40%);
       overflow:hidden;
-      height:100dvh;
+      min-height:100svh;
+      min-height:100dvh;
       height:100vh;
+      height:-webkit-fill-available;
     }
 
     .stage{
       position:fixed;
       inset:0;
-      height:100dvh;
+      min-height:100svh;
+      min-height:100dvh;
       height:100vh;
+      height:-webkit-fill-available;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -45,20 +51,19 @@
       user-select:none;
     }
 
-    /* Mobile/Tablet: ensure wheel fits the viewport (height matters more on phones) */
+    /* Keep a single responsive rule-set (avoid conflicting vmin overrides on iOS) */
     @media (max-width: 768px){
-      .wheel-wrap{ width: min(92vw, 74vh); height: min(92vw, 74vh); }
-      .center-btn{ width:96px; height:96px; font-size:14px; }
+      /* Fit by height first on phones (iOS Safari especially) */
+      .wheel-wrap{ width:min(92vw, 78svh); height:min(92vw, 78svh); }
+      .center-btn{ width:96px; height:96px; font-size:14px; line-height:1; }
       .pointer{ right:-12px; border-top:14px solid transparent; border-bottom:14px solid transparent; border-right:28px solid var(--pin, #f0f2f5); }
       .pointer:before{ right:-28px; top:-14px; border-top:14px solid transparent; border-bottom:14px solid transparent; border-right:28px solid var(--pinHi, rgba(255,255,255,.9)); }
       .ui{ top:max(10px, env(safe-area-inset-top)); left:max(10px, env(safe-area-inset-left)); gap:8px; }
       .chip{ padding:9px 10px; font-size:12px; }
     }
-
-    /* Landscape phones (short height) */
     @media (max-height: 520px){
-      .wheel-wrap{ width: min(86vw, 86vh); height: min(86vw, 86vh); }
-      .center-btn{ width:86px; height:86px; font-size:13px; }
+      .wheel-wrap{ width:min(86vw, 86svh); height:min(86vw, 86svh); }
+      .center-btn{ width:86px; height:86px; font-size:13px; line-height:1; }
     }
     canvas{width:100%;height:100%;display:block}
 
@@ -252,56 +257,10 @@
     .caps b{color:#111}
 
 
-    /* ===== Responsive / Mobile / Tablet tweaks ===== */
+    /* ===== iOS / Mobile stability ===== */
     html{ -webkit-text-size-adjust:100%; }
     body{ overscroll-behavior:none; }
 
-    /* Phones */
-    @media (max-width: 520px){
-      .ui{gap:8px}
-      .chip{padding:9px 10px;font-size:12px}
-      .chip span{display:none}
-
-      .wheel-wrap{width:min(96vmin, 560px);height:min(96vmin, 560px)}
-
-      .pointer{
-        right:-12px;
-        border-top:14px solid transparent;
-        border-bottom:14px solid transparent;
-        border-right:26px solid var(--pin, #f0f2f5);
-      }
-      .pointer:before{
-        right:-26px;
-        top:-14px;
-        border-top:14px solid transparent;
-        border-bottom:14px solid transparent;
-        border-right:26px solid var(--pinHi, rgba(255,255,255,.9));
-      }
-
-      .center-btn{width:92px;height:92px;font-size:14px}
-      .result{font-size:12px;padding:9px 12px}
-
-      .modal{width:min(720px, 96vw)}
-      textarea{min-height:180px;font-size:13px}
-      .btn{min-width:100px;padding:10px 12px}
-    }
-
-    /* Tablets (iPad / Android tablets) */
-    @media (min-width: 521px) and (max-width: 1024px){
-      .wheel-wrap{width:min(92vmin, 780px);height:min(92vmin, 780px)}
-      .center-btn{width:112px;height:112px;font-size:15px}
-      .chip{font-size:13px;padding:10px 12px}
-    }
-
-    /* Short landscape (phones in landscape) */
-    @media (max-height: 520px){
-      .stage{padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
-                   max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));}
-      .wheel-wrap{width:min(84vmin, 640px);height:min(84vmin, 640px)}
-      .center-btn{width:86px;height:86px;font-size:13px}
-    }
-
-    /* Respect reduced-motion */
     @media (prefers-reduced-motion: reduce){
       .pointer{filter:none}
     }
@@ -463,6 +422,7 @@
   const winAudio = new Audio();
   winAudio.preload = "auto";
   winAudio.playsInline = true;
+  winAudio.crossOrigin = "anonymous";
   let winUrlIdx = 0;
   function setWinSrc(i){
     winUrlIdx = i;
@@ -473,30 +433,37 @@
   winAudio.addEventListener("error", () => {
     if (winUrlIdx === 0) setWinSrc(1);
   });
-  let winAudioUnlocked = false;
-  function unlockWinAudio(){
-    if (winAudioUnlocked) return;
+  // iOS: play must happen inside the user gesture call stack.
+  // So we "arm" the audio on the first tap by playing it at volume 0 and looping.
+  // Later, on win, we just set volume=1 + currentTime=0 (no new play call).
+  let winAudioArmed = false;
+  function armWinAudio(){
+    if (winAudioArmed) return;
     try {
-      winAudio.muted = true;
+      winAudio.loop = true;
+      winAudio.volume = 0;
       const p = winAudio.play();
-      if (p && typeof p.then === "function") {
-        p.then(() => {
-          winAudio.pause();
-          winAudio.currentTime = 0;
-          winAudio.muted = false;
-          winAudioUnlocked = true;
-        }).catch(() => {
-          winAudio.muted = false;
-        });
+      if (p && typeof p.then === 'function') {
+        p.then(() => { winAudioArmed = true; }).catch(()=>{});
       } else {
-        winAudio.pause();
-        winAudio.currentTime = 0;
-        winAudio.muted = false;
-        winAudioUnlocked = true;
+        winAudioArmed = true;
       }
-    } catch (_) {
-      try { winAudio.muted = false; } catch (_) {}
-    }
+    } catch (_) {}
+  }
+  function _playWinSoundArmed(){
+    try {
+      // ensure armed; if not, try direct play (Android/desktop will still work)
+      if (!winAudioArmed) {
+        winAudio.loop = false;
+        winAudio.volume = 1;
+        winAudio.currentTime = 0;
+        winAudio.play().catch(()=>{});
+        return;
+      }
+      winAudio.loop = false;
+      winAudio.currentTime = 0;
+      winAudio.volume = 1;
+    } catch (_) {}
   }
   function ensureAudio(){
     if (!audioCtx){
@@ -864,13 +831,8 @@
   }
 
   function playWinSound(){
-    // Must be triggered after a user gesture on mobile; we call it right after spin ends.
-    try {
-      winAudio.pause();
-      winAudio.currentTime = 0;
-    } catch (_) {}
-    const p = winAudio.play();
-    if (p && typeof p.catch === "function") p.catch(()=>{});
+    // Use the armed method for iOS. (Android/desktop still fine.)
+    _playWinSoundArmed();
   }
 
   function wobblePointer(){
@@ -1002,8 +964,7 @@
 
   function spinPhysics(){
     ensureAudio();
-    unlockWinAudio();
-    unlockWinAudio();
+    armWinAudio();
     if (!canSpin()) return;
     if (spinning || items.length < 2) return;
 
