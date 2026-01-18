@@ -231,6 +231,62 @@
       line-height:1.6;
     }
     .caps b{color:#111}
+
+
+    /* ===== Responsive / Mobile / Tablet tweaks ===== */
+    html{ -webkit-text-size-adjust:100%; }
+    body{ overscroll-behavior:none; }
+
+    /* Phones */
+    @media (max-width: 520px){
+      .ui{gap:8px}
+      .chip{padding:9px 10px;font-size:12px}
+      .chip span{display:none}
+
+      .wheel-wrap{width:min(96vmin, 560px);height:min(96vmin, 560px)}
+
+      .pointer{
+        right:-12px;
+        border-top:14px solid transparent;
+        border-bottom:14px solid transparent;
+        border-right:26px solid var(--pin, #f0f2f5);
+      }
+      .pointer:before{
+        right:-26px;
+        top:-14px;
+        border-top:14px solid transparent;
+        border-bottom:14px solid transparent;
+        border-right:26px solid var(--pinHi, rgba(255,255,255,.9));
+      }
+
+      .center-btn{width:92px;height:92px;font-size:14px}
+      .result{font-size:12px;padding:9px 12px}
+
+      .modal{width:min(720px, 96vw)}
+      textarea{min-height:180px;font-size:13px}
+      .btn{min-width:100px;padding:10px 12px}
+    }
+
+    /* Tablets (iPad / Android tablets) */
+    @media (min-width: 521px) and (max-width: 1024px){
+      .wheel-wrap{width:min(92vmin, 780px);height:min(92vmin, 780px)}
+      .center-btn{width:112px;height:112px;font-size:15px}
+      .chip{font-size:13px;padding:10px 12px}
+    }
+
+    /* Short landscape (phones in landscape) */
+    @media (max-height: 520px){
+      .stage{padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+                   max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));}
+      .wheel-wrap{width:min(84vmin, 640px);height:min(84vmin, 640px)}
+      .center-btn{width:86px;height:86px;font-size:13px}
+    }
+
+    /* Respect reduced-motion */
+    @media (prefers-reduced-motion: reduce){
+      .pointer{filter:none}
+    }
+
   </style>
 </head>
 <body>
