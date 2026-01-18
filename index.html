@@ -434,6 +434,15 @@
 
   // Audio
   let audioCtx = null;
+  // Win sound (external MP3)
+  const WIN_SOUND_URL = "https://k.top4top.io/m_36703root1.mp3";
+  const winAudio = (() => {
+    const a = new Audio(WIN_SOUND_URL);
+    a.preload = "auto";
+    a.playsInline = true;
+    a.crossOrigin = "anonymous";
+    return a;
+  })();
   function ensureAudio(){
     if (!audioCtx){
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -799,6 +808,16 @@
     o.stop(t + 0.22);
   }
 
+  function playWinSound(){
+    // Must be triggered after a user gesture on mobile; we call it right after spin ends.
+    try {
+      winAudio.pause();
+      winAudio.currentTime = 0;
+    } catch (_) {}
+    const p = winAudio.play();
+    if (p && typeof p.catch === "function") p.catch(()=>{});
+  }
+
   function wobblePointer(){
     if (!pointerEl) return;
     pointerEl.animate([
@@ -827,9 +846,9 @@
     fx.style.display = "block";
     fxRunning = true;
     fxParts = [];
-    fxEndsAt = performance.now() + 700; // fast
+    fxEndsAt = performance.now() + 520; // very fast
 
-    const bursts = 6;
+    const bursts = 8;
     for (let b=0; b<bursts; b++) {
       setTimeout(() => {
         spawnBurst(
@@ -837,7 +856,7 @@
           0.2 + Math.random()*0.5,
           70 + Math.floor(Math.random()*35)
         );
-      }, b*70);
+      }, b*45);
     }
 
     if (!rafFx) rafFx = requestAnimationFrame(fxFrame);
@@ -856,15 +875,15 @@
 
     for (let i=0; i<count; i++){
       const a = Math.random() * Math.PI * 2;
-      const sp = 10 + Math.random()*10; // FAST
+      const sp = 16 + Math.random()*14; // VERY FAST
       fxParts.push({
         x, y,
         vx: Math.cos(a)*sp,
         vy: Math.sin(a)*sp,
-        life: 26 + Math.random()*18,
+        life: 18 + Math.random()*14,
         r: 2 + Math.random()*2,
         c: base,
-        g: 0.35
+        g: 0.25
       });
     }
   }
@@ -915,6 +934,7 @@
   }
   function closeWinner(){
     winnerBackdrop.style.display = "none";
+    try { winAudio.pause(); winAudio.currentTime = 0; } catch (_) {}
   }
 
   // ===== Mechanical spin (physics-based) =====
@@ -1006,7 +1026,7 @@
     lastWinner = winner;
 
     // FX + sound
-    playClapFast();
+    playWinSound();
     launchFireworksFast();
 
     showWinnerModal(winner);
