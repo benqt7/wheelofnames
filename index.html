@@ -51,7 +51,7 @@
       width:0;height:0;
       border-top:18px solid transparent;
       border-bottom:18px solid transparent;
-      border-right:34px solid #f0f2f5; /* points LEFT into the wheel */
+      border-right:34px solid var(--pin, #f0f2f5); /* dynamic (matches slice) */
       filter:drop-shadow(0 6px 8px rgba(0,0,0,.18));
       pointer-events:none;
     }
@@ -63,7 +63,7 @@
       width:0;height:0;
       border-top:18px solid transparent;
       border-bottom:18px solid transparent;
-      border-right:34px solid rgba(255,255,255,.9);
+      border-right:34px solid var(--pinHi, rgba(255,255,255,.9)); /* highlight */
       transform:translateX(3px);
       opacity:.55;
       pointer-events:none;
@@ -311,10 +311,10 @@
   ];
 
   const wheelWrap = document.getElementById("wheelWrap");
+  const pointerEl = document.querySelector(".pointer");
   const canvas = document.getElementById("wheel");
   const ctx = canvas.getContext("2d");
-
-  const spinBtn = document.getElementById("spinBtn");
+const spinBtn = document.getElementById("spinBtn");
   const resultEl = document.getElementById("result");
 
   const openSettings = document.getElementById("openSettings");
@@ -543,6 +543,9 @@
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.restore();
+
+    // Keep pointer color synced with current slice
+    updatePointerColor();
   }
 
   function normalizeAngle(a) {
@@ -551,7 +554,39 @@
     return a;
   }
 
-  function showResult(text) {
+  
+  function hexToRgb(hex){
+    const h = String(hex).replace("#","").trim();
+    if (h.length === 3){
+      const r = parseInt(h[0]+h[0],16), g = parseInt(h[1]+h[1],16), b = parseInt(h[2]+h[2],16);
+      return {r,g,b};
+    }
+    const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+    return {r,g,b};
+  }
+  function mixWithWhite(hex, amount){
+    // amount: 0..1 (0 = original, 1 = white)
+    const c = hexToRgb(hex);
+    const r = Math.round(c.r + (255 - c.r) * amount);
+    const g = Math.round(c.g + (255 - c.g) * amount);
+    const b = Math.round(c.b + (255 - c.b) * amount);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+  function getIndexAtPointer(){
+    const n = items.length;
+    const step = (Math.PI*2) / n;
+    const rel = normalizeAngle(POINTER_ANGLE - (START_OFFSET + rotation));
+    const idx = Math.floor(rel / step);
+    return Math.min(n-1, Math.max(0, idx));
+  }
+  function updatePointerColor(){
+    if (!pointerEl || !items.length) return;
+    const idx = getIndexAtPointer();
+    const baseHex = PALETTE[idx % PALETTE.length].fill;
+    pointerEl.style.setProperty("--pin", baseHex);
+    pointerEl.style.setProperty("--pinHi", mixWithWhite(baseHex, 0.65));
+  }
+function showResult(text) {
     resultEl.textContent = text;
     resultEl.style.display = "block";
   }
