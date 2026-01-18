@@ -21,11 +21,15 @@
       color:var(--text);
       background:linear-gradient(180deg, var(--bg1), var(--bg2) 40%);
       overflow:hidden;
+      height:100dvh;
+      height:100vh;
     }
 
     .stage{
       position:fixed;
       inset:0;
+      height:100dvh;
+      height:100vh;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -41,6 +45,21 @@
       user-select:none;
     }
 
+    /* Mobile/Tablet: ensure wheel fits the viewport (height matters more on phones) */
+    @media (max-width: 768px){
+      .wheel-wrap{ width: min(92vw, 74vh); height: min(92vw, 74vh); }
+      .center-btn{ width:96px; height:96px; font-size:14px; }
+      .pointer{ right:-12px; border-top:14px solid transparent; border-bottom:14px solid transparent; border-right:28px solid var(--pin, #f0f2f5); }
+      .pointer:before{ right:-28px; top:-14px; border-top:14px solid transparent; border-bottom:14px solid transparent; border-right:28px solid var(--pinHi, rgba(255,255,255,.9)); }
+      .ui{ top:max(10px, env(safe-area-inset-top)); left:max(10px, env(safe-area-inset-left)); gap:8px; }
+      .chip{ padding:9px 10px; font-size:12px; }
+    }
+
+    /* Landscape phones (short height) */
+    @media (max-height: 520px){
+      .wheel-wrap{ width: min(86vw, 86vh); height: min(86vw, 86vh); }
+      .center-btn{ width:86px; height:86px; font-size:13px; }
+    }
     canvas{width:100%;height:100%;display:block}
 
     .pointer{
@@ -434,15 +453,51 @@
 
   // Audio
   let audioCtx = null;
-  // Win sound (external MP3)
-  const WIN_SOUND_URL = "https://k.top4top.io/m_36703root1.mp3";
-  const winAudio = (() => {
-    const a = new Audio(WIN_SOUND_URL);
-    a.preload = "auto";
-    a.playsInline = true;
-    a.crossOrigin = "anonymous";
-    return a;
-  })();
+  // Win sound (MP3)
+  // iOS Safari needs an "unlock" play inside the first user gesture.
+  // We try the remote URL first, and fall back to local win.mp3 if the host blocks playback.
+  const WIN_SOUND_URLS = [
+    "https://k.top4top.io/m_36703root1.mp3",
+    "win.mp3"
+  ];
+  const winAudio = new Audio();
+  winAudio.preload = "auto";
+  winAudio.playsInline = true;
+  let winUrlIdx = 0;
+  function setWinSrc(i){
+    winUrlIdx = i;
+    winAudio.src = WIN_SOUND_URLS[winUrlIdx];
+    try { winAudio.load(); } catch (_) {}
+  }
+  setWinSrc(0);
+  winAudio.addEventListener("error", () => {
+    if (winUrlIdx === 0) setWinSrc(1);
+  });
+  let winAudioUnlocked = false;
+  function unlockWinAudio(){
+    if (winAudioUnlocked) return;
+    try {
+      winAudio.muted = true;
+      const p = winAudio.play();
+      if (p && typeof p.then === "function") {
+        p.then(() => {
+          winAudio.pause();
+          winAudio.currentTime = 0;
+          winAudio.muted = false;
+          winAudioUnlocked = true;
+        }).catch(() => {
+          winAudio.muted = false;
+        });
+      } else {
+        winAudio.pause();
+        winAudio.currentTime = 0;
+        winAudio.muted = false;
+        winAudioUnlocked = true;
+      }
+    } catch (_) {
+      try { winAudio.muted = false; } catch (_) {}
+    }
+  }
   function ensureAudio(){
     if (!audioCtx){
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -947,6 +1002,8 @@
 
   function spinPhysics(){
     ensureAudio();
+    unlockWinAudio();
+    unlockWinAudio();
     if (!canSpin()) return;
     if (spinning || items.length < 2) return;
 
