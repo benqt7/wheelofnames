@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>عجلة الحظ</title>
+  <style>
+    :root{
+      --bg1:#f7f9ff;
+      --bg2:#ffffff;
+      --stroke:#d6dde6;
+      --text:#111;
+      --muted:#6b7280;
+      --chip:#ffffffcc;
+      --chipBorder:#d6dde6;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial;
+      color:var(--text);
+      background:linear-gradient(180deg, var(--bg1), var(--bg2) 40%);
+      overflow:hidden;
+    }
+
+    .stage{
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+               max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    }
+
+    .wheel-wrap{
+      width:min(92vmin, 860px);
+      height:min(92vmin, 860px);
+      position:relative;
+      touch-action:manipulation;
+      user-select:none;
+    }
+
+    canvas{width:100%;height:100%;display:block}
+
+    .pointer{
+      position:absolute;
+      right:-16px;
+      top:50%;
+      transform:translateY(-50%);
+      width:0;height:0;
+      border-top:18px solid transparent;
+      border-bottom:18px solid transparent;
+      border-right:34px solid #f0f2f5; /* points LEFT into the wheel */
+      filter:drop-shadow(0 6px 8px rgba(0,0,0,.18));
+      pointer-events:none;
+    }
+    .pointer:before{
+      content:"";
+      position:absolute;
+      right:-34px;
+      top:-18px;
+      width:0;height:0;
+      border-top:18px solid transparent;
+      border-bottom:18px solid transparent;
+      border-right:34px solid rgba(255,255,255,.9);
+      transform:translateX(3px);
+      opacity:.55;
+      pointer-events:none;
+    }
+
+    .center-btn{
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+      width:128px;
+      height:128px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,.08);
+      background:radial-gradient(circle at 30% 30%, #ffffff 0%, #f3f4f6 55%, #e5e7eb 100%);
+      box-shadow: 0 14px 28px rgba(0,0,0,.14);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      font-size:16px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .center-btn:active{transform:translate(-50%,-50%) scale(.98)}
+
+    .ui{
+      position:fixed;
+      top: max(12px, env(safe-area-inset-top));
+      left: max(12px, env(safe-area-inset-left));
+      display:flex;
+      gap:10px;
+      z-index:10;
+    }
+    .chip{
+      background:var(--chip);
+      border:1px solid var(--chipBorder);
+      border-radius:999px;
+      padding:10px 12px;
+      font-weight:800;
+      font-size:12px;
+      box-shadow:0 10px 24px rgba(0,0,0,.08);
+      cursor:pointer;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .chip:active{transform:scale(.99)}
+    .chip span{opacity:.85;font-weight:800}
+    .chip.secondary{font-weight:700;color:#111}
+    .chip.secondary span{opacity:.6;font-weight:700}
+
+    .result{
+      position:fixed;
+      left:50%;
+      bottom: max(14px, env(safe-area-inset-bottom));
+      transform:translateX(-50%);
+      background:rgba(255,255,255,.92);
+      border:1px solid var(--stroke);
+      border-radius:999px;
+      padding:10px 14px;
+      box-shadow:0 10px 24px rgba(0,0,0,.08);
+      font-weight:900;
+      font-size:13px;
+      max-width:min(92vw, 740px);
+      text-align:center;
+      display:none;
+      z-index:10;
+    }
+
+    /* Modal */
+    .modal-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.28);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      z-index:20;
+    }
+    .modal{
+      width:min(680px, 94vw);
+      background:#fff;
+      border:1px solid var(--stroke);
+      border-radius:16px;
+      box-shadow:0 22px 60px rgba(0,0,0,.22);
+      overflow:hidden;
+    }
+    .modal header{
+      padding:12px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      border-bottom:1px solid var(--stroke);
+    }
+    .modal header strong{font-size:13px}
+    .modal header button{
+      border:0;
+      background:transparent;
+      font-size:18px;
+      cursor:pointer;
+      padding:6px 10px;
+      border-radius:10px;
+    }
+    .modal header button:hover{background:#f3f4f6}
+    .modal .body{padding:12px 14px}
+    textarea{
+      width:100%;
+      min-height:240px;
+      resize:vertical;
+      border-radius:12px;
+      border:1px solid var(--stroke);
+      padding:12px;
+      font-family:inherit;
+      font-size:13px;
+      line-height:1.6;
+      outline:none;
+    }
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    .btn{
+      border:0;
+      border-radius:12px;
+      padding:11px 14px;
+      cursor:pointer;
+      font-weight:800;
+      background:#1f6feb;
+      color:white;
+      min-width:120px;
+    }
+    .btn.ghost{
+      background:#eef2f7;
+      color:#111;
+      border:1px solid var(--stroke);
+      font-weight:700;
+    }
+    .tog{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin-top:12px;
+      font-size:13px;
+      color:#111;
+      user-select:none;
+    }
+    .tog input{transform:scale(1.1)}
+    .note{
+      margin-top:10px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.55;
+    }
+    .caps{
+      margin-top:10px;
+      padding:10px 12px;
+      border:1px dashed rgba(31,111,235,.35);
+      border-radius:14px;
+      background:rgba(31,111,235,.06);
+      font-size:12px;
+      color:rgba(17,17,17,.85);
+      line-height:1.6;
+    }
+    .caps b{color:#111}
+  </style>
+</head>
+<body>
+  <div class="ui">
+    <div class="chip" id="openSettings">الإعدادات <span>⚙️</span></div>
+    <div class="chip secondary" id="importChip">استيراد JSON <span>⬆️</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="wheel-wrap" id="wheelWrap">
+      <div class="pointer" aria-hidden="true"></div>
+      <canvas id="wheel"></canvas>
+      <div class="center-btn" id="spinBtn">لف</div>
+    </div>
+  </div>
+
+  <div class="result" id="result"></div>
+
+  <input type="file" id="importFile" accept="application/json" style="display:none" />
+
+  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true">
+    <div class="modal">
+      <header>
+        <strong>الإعدادات + القائمة (مخفية عن الصفحة الرئيسية)</strong>
+        <button id="closeModal" aria-label="إغلاق">✕</button>
+      </header>
+      <div class="body">
+        <textarea id="items" spellcheck="false"></textarea>
+
+        <div class="row">
+          <button class="btn ghost" id="applyBtn">تطبيق</button>
+          <button class="btn ghost" id="shuffleBtn">خلط</button>
+          <button class="btn ghost" id="exportBtn">تحميل JSON</button>
+          <button class="btn ghost" id="resetBtn">افتراضي</button>
+        </div>
+
+        <label class="tog">
+          <input type="checkbox" id="removeWinner" />
+          إزالة الفائز بعد الفوز
+        </label>
+
+        <div class="caps" id="capsInfo"></div>
+
+        <div class="note">
+          تنبيه: بما أنها HTML فقط، حد "مرتين باليوم" ينطبق داخل نفس الجلسة/الصفحة.
+          لو سويت Refresh يرجع كل شيء. إذا تبغاه يثبت بدون سيرفر لازم localStorage أو API/DB (أنت قلت لا).
+          الحل اللي عندك الآن: تحفظ/ترجع القائمة يدويًا عبر JSON.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ===== Your fixed prizes =====
+  // Daily cap: these 6 items can be won only twice per day (within the running page session).
+  // The 4 codes are unlimited.
+  const PRIZES = [
+    { title: "سماعة Jpl 520BT", dailyCap: 2 },
+    { title: "ساعة شاومي", dailyCap: 2 },
+    { title: "قلم ايباد", dailyCap: 2 },
+    { title: "سماعة هواوي", dailyCap: 2 },
+    { title: "شاحن متنقل", dailyCap: 2 },
+    { title: "تابلت سامسونج", dailyCap: 2 },
+
+    { title: "دورة مجانية", dailyCap: 0 },
+    { title: "كود 10 ٪؜", dailyCap: 0 },
+    { title: "كود 30 ٪؜", dailyCap: 0 },
+    { title: "كود 50 ٪؜", dailyCap: 0 },
+  ];
+
+  // Wheelofnames-like repeating palette (matches your screenshot vibe)
+  const PALETTE = [
+    { fill:"#a9d3dd", text:"#111" }, // light blue
+    { fill:"#b9b9b9", text:"#111" }, // gray
+    { fill:"#ffffff", text:"#111" }, // white
+    { fill:"#2e58a9", text:"#ffffff" } // blue
+  ];
+
+  const wheelWrap = document.getElementById("wheelWrap");
+  const canvas = document.getElementById("wheel");
+  const ctx = canvas.getContext("2d");
+
+  const spinBtn = document.getElementById("spinBtn");
+  const resultEl = document.getElementById("result");
+
+  const openSettings = document.getElementById("openSettings");
+  const importChip = document.getElementById("importChip");
+  const importFile = document.getElementById("importFile");
+
+  const modalBackdrop = document.getElementById("modalBackdrop");
+  const closeModal = document.getElementById("closeModal");
+  const itemsTa = document.getElementById("items");
+  const applyBtn = document.getElementById("applyBtn");
+  const shuffleBtn = document.getElementById("shuffleBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const removeWinnerEl = document.getElementById("removeWinner");
+  const capsInfo = document.getElementById("capsInfo");
+
+  let items = [];               // array of titles (one per slice)
+  let capsByTitle = {};         // title -> dailyCap
+  let rotation = 0;             // radians
+  let spinning = false;
+
+  // per-day wins tracker in memory (no localStorage)
+  const winsByDay = {};         // { "YYYY-MM-DD": { "title": wins } }
+
+  // Pointer is at right (0 rad). Draw segments starting at top (-90deg)
+  const START_OFFSET = -Math.PI / 2;
+  const POINTER_ANGLE = 0;
+
+  function riyadhDay() {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Riyadh",
+      year:"numeric", month:"2-digit", day:"2-digit"
+    }).formatToParts(new Date());
+    const y = parts.find(p=>p.type==="year").value;
+    const m = parts.find(p=>p.type==="month").value;
+    const d = parts.find(p=>p.type==="day").value;
+    return `${y}-${m}-${d}`;
+  }
+
+  function getWinsToday(title) {
+    const day = riyadhDay();
+    if (!winsByDay[day]) winsByDay[day] = {};
+    return winsByDay[day][title] || 0;
+  }
+
+  function incWinsToday(title) {
+    const day = riyadhDay();
+    if (!winsByDay[day]) winsByDay[day] = {};
+    winsByDay[day][title] = (winsByDay[day][title] || 0) + 1;
+  }
+
+  function remainingToday(title) {
+    const cap = capsByTitle[title] || 0;
+    if (cap <= 0) return 999999;
+    return Math.max(cap - getWinsToday(title), 0);
+  }
+
+  // ===== Responsive canvas with DPR =====
+  function resizeCanvas() {
+    const rect = wheelWrap.getBoundingClientRect();
+    const size = Math.floor(Math.min(rect.width, rect.height));
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    canvas.width = Math.floor(size * dpr);
+    canvas.height = Math.floor(size * dpr);
+    canvas.style.width = size + "px";
+    canvas.style.height = size + "px";
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    draw();
+  }
+  const ro = new ResizeObserver(resizeCanvas);
+  ro.observe(wheelWrap);
+  window.addEventListener("resize", resizeCanvas, { passive:true });
+
+  function buildDefaultList() {
+    items = PRIZES.map(p => p.title);
+    capsByTitle = {};
+    for (const p of PRIZES) capsByTitle[p.title] = p.dailyCap || 0;
+    itemsTa.value = items.join("\n");
+    updateCapsInfo();
+  }
+
+  function updateCapsInfo() {
+    const day = riyadhDay();
+    const limited = PRIZES.filter(p => (p.dailyCap || 0) > 0);
+    const lines = limited.map(p => {
+      const rem = remainingToday(p.title);
+      const used = getWinsToday(p.title);
+      return `• ${p.title}: ${used}/${p.dailyCap} (متبقي ${rem})`;
+    }).join("<br>");
+    capsInfo.innerHTML = `<b>حد اليوم (الرياض):</b> ${day}<br>${lines}`;
+  }
+
+  function parseItemsFromTextarea() {
+    items = itemsTa.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    if (items.length < 2) items = ["عنصر 1","عنصر 2"];
+
+    // Keep caps only for known titles; others unlimited
+    capsByTitle = {};
+    for (const p of PRIZES) capsByTitle[p.title] = p.dailyCap || 0;
+
+    updateCapsInfo();
+  }
+
+  function shuffleArray(a) {
+    for (let i=a.length-1; i>0; i--) {
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function draw() {
+    const w = canvas.clientWidth || wheelWrap.clientWidth;
+    const h = canvas.clientHeight || wheelWrap.clientHeight;
+    const cx = w/2, cy = h/2;
+
+    const outerR = Math.min(cx, cy) - 18;
+    const innerHoleR = Math.max(52, outerR * 0.17);
+
+    ctx.clearRect(0,0,w,h);
+
+    // Shadow
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx+5, cy+8, outerR+10, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.filter = "blur(10px)";
+    ctx.fill();
+    ctx.restore();
+
+    // Rim gradient
+    ctx.save();
+    const rimGrad = ctx.createRadialGradient(cx-outerR*0.25, cy-outerR*0.35, outerR*0.2, cx, cy, outerR+18);
+    rimGrad.addColorStop(0, "rgba(255,255,255,.95)");
+    rimGrad.addColorStop(0.55, "rgba(210,210,210,.95)");
+    rimGrad.addColorStop(1, "rgba(120,120,120,.95)");
+    ctx.beginPath();
+    ctx.arc(cx, cy, outerR+14, 0, Math.PI*2);
+    ctx.fillStyle = rimGrad;
+    ctx.fill();
+    ctx.restore();
+
+    // Clip to circle
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, outerR, 0, Math.PI*2);
+    ctx.clip();
+
+    const n = items.length;
+    const step = (Math.PI*2) / n;
+
+    // Global light overlay
+    const globalLight = ctx.createLinearGradient(cx-outerR, cy-outerR, cx+outerR, cy+outerR);
+    globalLight.addColorStop(0, "rgba(255,255,255,.18)");
+    globalLight.addColorStop(0.45, "rgba(255,255,255,.00)");
+    globalLight.addColorStop(1, "rgba(0,0,0,.12)");
+
+    for (let i=0; i<n; i++) {
+      const pal = PALETTE[i % PALETTE.length];
+      const a0 = START_OFFSET + rotation + i*step;
+      const a1 = a0 + step;
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, outerR, a0, a1);
+      ctx.closePath();
+      ctx.fillStyle = pal.fill;
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(0,0,0,.06)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.globalCompositeOperation = "source-atop";
+      ctx.fillStyle = globalLight;
+      ctx.fillRect(cx-outerR, cy-outerR, outerR*2, outerR*2);
+      ctx.restore();
+
+      // Text
+      const mid = a0 + step/2;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(mid);
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+
+      let fs = Math.max(14, Math.min(42, outerR * 0.09));
+      if (n > 10) fs *= 0.85;
+      if (n > 16) fs *= 0.78;
+
+      ctx.font = `800 ${fs}px system-ui, Tahoma, Arial`;
+      ctx.fillStyle = pal.text;
+
+      const maxW = outerR - (innerHoleR + 42);
+      let t = items[i];
+      while (ctx.measureText(t).width > maxW && t.length > 3) t = t.slice(0,-1);
+      if (t !== items[i]) t = t.slice(0, Math.max(0, t.length-1)) + "…";
+
+      ctx.fillText(t, outerR - 18, 0);
+      ctx.restore();
+    }
+
+    ctx.restore(); // clip
+
+    // Center hole
+    ctx.save();
+    const ringGrad = ctx.createRadialGradient(cx-20, cy-20, 10, cx, cy, innerHoleR+16);
+    ringGrad.addColorStop(0, "rgba(255,255,255,1)");
+    ringGrad.addColorStop(0.55, "rgba(250,250,250,1)");
+    ringGrad.addColorStop(1, "rgba(220,220,220,1)");
+    ctx.beginPath();
+    ctx.arc(cx, cy, innerHoleR+16, 0, Math.PI*2);
+    ctx.fillStyle = ringGrad;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, innerHoleR, 0, Math.PI*2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, innerHoleR, 0, Math.PI*2);
+    ctx.strokeStyle = "rgba(0,0,0,.08)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function normalizeAngle(a) {
+    a %= (Math.PI*2);
+    if (a < 0) a += Math.PI*2;
+    return a;
+  }
+
+  function showResult(text) {
+    resultEl.textContent = text;
+    resultEl.style.display = "block";
+  }
+  function hideResult(){ resultEl.style.display = "none"; }
+
+  function downloadJSON(filename, dataObj) {
+    const blob = new Blob([JSON.stringify(dataObj, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportState() {
+    const raw = itemsTa.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    const payload = {
+      version: 1,
+      exported_at: new Date().toISOString(),
+      items: raw,
+      settings: {
+        removeWinner: !!removeWinnerEl.checked
+      }
+    };
+    const safeDate = new Date().toISOString().slice(0,10);
+    downloadJSON(`wheel_${safeDate}.json`, payload);
+  }
+
+  function importStateFromText(text) {
+    let obj;
+    try { obj = JSON.parse(text); } catch { throw new Error("ملف JSON غير صالح."); }
+    const importedItems = Array.isArray(obj?.items) ? obj.items : null;
+    if (!importedItems || importedItems.length < 2) throw new Error("لازم الملف يحتوي items وبحد أدنى عنصرين.");
+
+    const clean = importedItems.map(v => String(v).trim()).filter(Boolean);
+    if (clean.length < 2) throw new Error("بعد التنظيف، ما بقى عناصر كفاية.");
+
+    itemsTa.value = clean.join("\n");
+    if (obj?.settings && typeof obj.settings.removeWinner === "boolean") {
+      removeWinnerEl.checked = obj.settings.removeWinner;
+    }
+    apply();
+  }
+
+  function easeOutCubic(t){ return 1 - Math.pow(1-t,3); }
+
+  function animateToIndex(index) {
+    return new Promise(resolve => {
+      const n = items.length;
+      const step = (Math.PI*2) / n;
+
+      // We want the selected slice midpoint to align under pointer at right (0 rad)
+      // Pointer sees rel = POINTER - (START_OFFSET + rotation). For index i, mid = i*step + step/2
+      // Solve for rotation_end so that mid == rel:
+      // rel = normalize(POINTER - (START_OFFSET + rotation_end))
+      // We can pick rotation_end so that (START_OFFSET + rotation_end) == POINTER - mid (mod 2pi)
+      const targetMid = index * step + (step/2);
+      const desired = (POINTER_ANGLE - targetMid) - START_OFFSET; // base rotation to land exactly
+
+      // add extra spins
+      const spins = 8 + Math.random()*2; // 8..10
+      const start = rotation;
+      const end = desired + spins * Math.PI*2;
+
+      const dur = 2600;
+      const t0 = performance.now();
+
+      function frame(t){
+        const p = Math.min(1, (t - t0) / dur);
+        const e = easeOutCubic(p);
+        rotation = start + (end - start) * e;
+        draw();
+        if (p < 1) requestAnimationFrame(frame);
+        else resolve();
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  function getEligibleIndices() {
+    const eligible = [];
+    for (let i=0; i<items.length; i++) {
+      const title = items[i];
+      if (remainingToday(title) > 0) eligible.push(i);
+    }
+    return eligible;
+  }
+
+  async function spin() {
+    if (spinning || items.length < 2) return;
+    spinning = true;
+    spinBtn.style.pointerEvents = "none";
+    hideResult();
+
+    // Choose winner index from eligible items only (enforces the 2/day cap)
+    const eligible = getEligibleIndices();
+    if (!eligible.length) {
+      showResult("لا توجد جوائز متاحة اليوم (داخل الجلسة).");
+      spinning = false;
+      spinBtn.style.pointerEvents = "auto";
+      return;
+    }
+
+    const chosenIndex = eligible[Math.floor(Math.random() * eligible.length)];
+    const winner = items[chosenIndex];
+
+    await animateToIndex(chosenIndex);
+
+    // Apply cap counters
+    if ((capsByTitle[winner] || 0) > 0) {
+      incWinsToday(winner);
+      updateCapsInfo();
+    }
+
+    showResult(`النتيجة: ${winner}`);
+
+    // Optional remove winner (this overrides cap logic by removing slice)
+    if (removeWinnerEl.checked) {
+      items.splice(chosenIndex, 1);
+      itemsTa.value = items.join("\n");
+      if (items.length < 2) {
+        items = ["عنصر 1","عنصر 2"];
+        itemsTa.value = items.join("\n");
+      }
+      draw();
+      updateCapsInfo();
+    }
+
+    spinning = false;
+    spinBtn.style.pointerEvents = "auto";
+  }
+
+  function apply() {
+    parseItemsFromTextarea();
+    draw();
+    hideResult();
+  }
+
+  // Modal controls
+  function openModal(){ modalBackdrop.style.display = "flex"; updateCapsInfo(); }
+  function close(){ modalBackdrop.style.display = "none"; }
+  openSettings.addEventListener("click", openModal);
+  closeModal.addEventListener("click", close);
+  modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) close(); });
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+
+  // Import/Export
+  exportBtn.addEventListener("click", exportState);
+  importChip.addEventListener("click", () => { importFile.value = ""; importFile.click(); });
+  importFile.addEventListener("change", async () => {
+    const file = importFile.files && importFile.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      importStateFromText(text);
+      showResult("تم استيراد القائمة.");
+    } catch (e) {
+      showResult(e.message || "فشل الاستيراد.");
+    }
+  });
+
+  // drag/drop
+  wheelWrap.addEventListener("dragover", (e) => { e.preventDefault(); });
+  wheelWrap.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      importStateFromText(text);
+      showResult("تم استيراد القائمة.");
+    } catch (err) {
+      showResult(err.message || "فشل الاستيراد.");
+    }
+  });
+
+  // List buttons
+  applyBtn.addEventListener("click", apply);
+  shuffleBtn.addEventListener("click", () => {
+    parseItemsFromTextarea();
+    shuffleArray(items);
+    itemsTa.value = items.join("\n");
+    draw();
+    hideResult();
+  });
+  resetBtn.addEventListener("click", () => {
+    buildDefaultList();
+    apply();
+  });
+
+  // Spin
+  spinBtn.addEventListener("click", spin);
+  canvas.addEventListener("click", spin);
+  canvas.addEventListener("touchend", (e) => { e.preventDefault(); spin(); }, { passive:false });
+
+  // init
+  buildDefaultList();
+  apply();
+  resizeCanvas();
+})();
+</script>
+</body>
+</html>
