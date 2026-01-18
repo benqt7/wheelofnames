@@ -283,11 +283,27 @@
     </div>
   </div>
 
+
+  <!-- FX canvas (confetti + fireworks) -->
+  <canvas id="fx" style="position:fixed;inset:0;pointer-events:none;display:none;z-index:30"></canvas>
+
+  <!-- Winner modal (like screenshot) -->
+  <div id="winnerBackdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:40">
+    <div style="width:min(760px,94vw);border-radius:14px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08)">
+      <div style="background:#2563eb;color:#fff;padding:12px 14px;font-weight:900;font-size:14px">لدينا فائز!</div>
+      <div style="background:#1f1f1f;color:#fff;padding:34px 16px;text-align:center">
+        <div id="winnerText" style="font-weight:950;font-size:44px;line-height:1.1;letter-spacing:.2px"></div>
+        <div style="display:flex;gap:12px;justify-content:flex-end;align-items:center;margin-top:26px">
+          <button id="winnerClose" style="background:transparent;border:0;color:rgba(255,255,255,.9);font-weight:800;cursor:pointer;padding:10px 12px;border-radius:10px">اغلاق</button>
+          <button id="winnerSave" style="background:#3b82f6;border:0;color:#fff;font-weight:900;cursor:pointer;padding:10px 18px;border-radius:10px">حفظ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 <script>
 (() => {
-  // ===== Your fixed prizes =====
-  // Daily cap: these 6 items can be won only twice per day (within the running page session).
-  // The 4 codes are unlimited.
+  // ===== Fixed prizes (same as your base) =====
   const PRIZES = [
     { title: "سماعة Jpl 520BT", dailyCap: 2 },
     { title: "ساعة شاومي", dailyCap: 2 },
@@ -302,19 +318,18 @@
     { title: "كود 50 ٪؜", dailyCap: 0 },
   ];
 
-  // Wheelofnames-like repeating palette (matches your screenshot vibe)
   const PALETTE = [
-    { fill:"#a9d3dd", text:"#111" }, // light blue
-    { fill:"#b9b9b9", text:"#111" }, // gray
-    { fill:"#ffffff", text:"#111" }, // white
-    { fill:"#2e58a9", text:"#ffffff" } // blue
+    { fill:"#a9d3dd", text:"#111" },
+    { fill:"#b9b9b9", text:"#111" },
+    { fill:"#ffffff", text:"#111" },
+    { fill:"#2e58a9", text:"#ffffff" }
   ];
 
   const wheelWrap = document.getElementById("wheelWrap");
   const pointerEl = document.querySelector(".pointer");
   const canvas = document.getElementById("wheel");
   const ctx = canvas.getContext("2d");
-const spinBtn = document.getElementById("spinBtn");
+  const spinBtn = document.getElementById("spinBtn");
   const resultEl = document.getElementById("result");
 
   const openSettings = document.getElementById("openSettings");
@@ -331,19 +346,49 @@ const spinBtn = document.getElementById("spinBtn");
   const removeWinnerEl = document.getElementById("removeWinner");
   const capsInfo = document.getElementById("capsInfo");
 
-  let items = [];               // array of titles (one per slice)
-  let capsByTitle = {};         // title -> dailyCap
-  let rotation = 0;             // radians
+  // Winner modal
+  const winnerBackdrop = document.getElementById("winnerBackdrop");
+  const winnerText = document.getElementById("winnerText");
+  const winnerClose = document.getElementById("winnerClose");
+  const winnerSave = document.getElementById("winnerSave");
+
+  // FX
+  const fx = document.getElementById("fx");
+  const fxCtx = fx.getContext("2d");
+
+  let items = [];
+  let capsByTitle = {};
+  let rotation = 0;
   let spinning = false;
 
-  // per-day wins tracker in memory (no localStorage)
-  const winsByDay = {};         // { "YYYY-MM-DD": { "title": wins } }
+  // session-only wins (Riyadh day)
+  const winsByDay = {}; // { day: { title: wins } }
 
-  // Pointer is at right (0 rad). Draw segments starting at top (-90deg)
-  const START_OFFSET = -Math.PI / 2;
+  // Mechanics
+  let omega = 0; // angular velocity
+  let rafSpin = null;
+  let lastTickIdx = null;
+  let lastSpinAt = 0;
+
+  let lastWinner = null;
+
+  // Pointer is at right
+  const START_OFFSET = -Math.PI/2;
   const POINTER_ANGLE = 0;
 
-  function riyadhDay() {
+  // Audio
+  let audioCtx = null;
+  function ensureAudio(){
+    if (!audioCtx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(()=>{});
+    }
+  }
+
+  function riyadhDay(){
     const parts = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Riyadh",
       year:"numeric", month:"2-digit", day:"2-digit"
@@ -354,26 +399,24 @@ const spinBtn = document.getElementById("spinBtn");
     return `${y}-${m}-${d}`;
   }
 
-  function getWinsToday(title) {
+  function getWinsToday(title){
     const day = riyadhDay();
     if (!winsByDay[day]) winsByDay[day] = {};
     return winsByDay[day][title] || 0;
   }
-
-  function incWinsToday(title) {
+  function incWinsToday(title){
     const day = riyadhDay();
     if (!winsByDay[day]) winsByDay[day] = {};
     winsByDay[day][title] = (winsByDay[day][title] || 0) + 1;
   }
-
-  function remainingToday(title) {
+  function remainingToday(title){
     const cap = capsByTitle[title] || 0;
     if (cap <= 0) return 999999;
     return Math.max(cap - getWinsToday(title), 0);
   }
 
   // ===== Responsive canvas with DPR =====
-  function resizeCanvas() {
+  function resizeCanvas(){
     const rect = wheelWrap.getBoundingClientRect();
     const size = Math.floor(Math.min(rect.width, rect.height));
     const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
@@ -388,7 +431,15 @@ const spinBtn = document.getElementById("spinBtn");
   ro.observe(wheelWrap);
   window.addEventListener("resize", resizeCanvas, { passive:true });
 
-  function buildDefaultList() {
+  function resizeFx(){
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    fx.width = Math.floor(window.innerWidth * dpr);
+    fx.height = Math.floor(window.innerHeight * dpr);
+    fxCtx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener("resize", resizeFx, { passive:true });
+
+  function buildDefaultList(){
     items = PRIZES.map(p => p.title);
     capsByTitle = {};
     for (const p of PRIZES) capsByTitle[p.title] = p.dailyCap || 0;
@@ -396,7 +447,7 @@ const spinBtn = document.getElementById("spinBtn");
     updateCapsInfo();
   }
 
-  function updateCapsInfo() {
+  function updateCapsInfo(){
     const day = riyadhDay();
     const limited = PRIZES.filter(p => (p.dailyCap || 0) > 0);
     const lines = limited.map(p => {
@@ -407,18 +458,17 @@ const spinBtn = document.getElementById("spinBtn");
     capsInfo.innerHTML = `<b>حد اليوم (الرياض):</b> ${day}<br>${lines}`;
   }
 
-  function parseItemsFromTextarea() {
+  function parseItemsFromTextarea(){
     items = itemsTa.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     if (items.length < 2) items = ["عنصر 1","عنصر 2"];
 
-    // Keep caps only for known titles; others unlimited
     capsByTitle = {};
     for (const p of PRIZES) capsByTitle[p.title] = p.dailyCap || 0;
 
     updateCapsInfo();
   }
 
-  function shuffleArray(a) {
+  function shuffleArray(a){
     for (let i=a.length-1; i>0; i--) {
       const j = Math.floor(Math.random()*(i+1));
       [a[i], a[j]] = [a[j], a[i]];
@@ -426,7 +476,7 @@ const spinBtn = document.getElementById("spinBtn");
     return a;
   }
 
-  function draw() {
+  function draw(){
     const w = canvas.clientWidth || wheelWrap.clientWidth;
     const h = canvas.clientHeight || wheelWrap.clientHeight;
     const cx = w/2, cy = h/2;
@@ -457,7 +507,7 @@ const spinBtn = document.getElementById("spinBtn");
     ctx.fill();
     ctx.restore();
 
-    // Clip to circle
+    // Clip
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, outerR, 0, Math.PI*2);
@@ -466,7 +516,6 @@ const spinBtn = document.getElementById("spinBtn");
     const n = items.length;
     const step = (Math.PI*2) / n;
 
-    // Global light overlay
     const globalLight = ctx.createLinearGradient(cx-outerR, cy-outerR, cx+outerR, cy+outerR);
     globalLight.addColorStop(0, "rgba(255,255,255,.18)");
     globalLight.addColorStop(0.45, "rgba(255,255,255,.00)");
@@ -494,9 +543,7 @@ const spinBtn = document.getElementById("spinBtn");
       ctx.fillRect(cx-outerR, cy-outerR, outerR*2, outerR*2);
       ctx.restore();
 
-      // Text
       const mid = a0 + step/2;
-
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(mid);
@@ -544,17 +591,15 @@ const spinBtn = document.getElementById("spinBtn");
     ctx.stroke();
     ctx.restore();
 
-    // Keep pointer color synced with current slice
     updatePointerColor();
   }
 
-  function normalizeAngle(a) {
+  function normalizeAngle(a){
     a %= (Math.PI*2);
     if (a < 0) a += Math.PI*2;
     return a;
   }
 
-  
   function hexToRgb(hex){
     const h = String(hex).replace("#","").trim();
     if (h.length === 3){
@@ -565,13 +610,13 @@ const spinBtn = document.getElementById("spinBtn");
     return {r,g,b};
   }
   function mixWithWhite(hex, amount){
-    // amount: 0..1 (0 = original, 1 = white)
     const c = hexToRgb(hex);
     const r = Math.round(c.r + (255 - c.r) * amount);
     const g = Math.round(c.g + (255 - c.g) * amount);
     const b = Math.round(c.b + (255 - c.b) * amount);
     return `rgb(${r}, ${g}, ${b})`;
   }
+
   function getIndexAtPointer(){
     const n = items.length;
     const step = (Math.PI*2) / n;
@@ -579,6 +624,7 @@ const spinBtn = document.getElementById("spinBtn");
     const idx = Math.floor(rel / step);
     return Math.min(n-1, Math.max(0, idx));
   }
+
   function updatePointerColor(){
     if (!pointerEl || !items.length) return;
     const idx = getIndexAtPointer();
@@ -586,13 +632,14 @@ const spinBtn = document.getElementById("spinBtn");
     pointerEl.style.setProperty("--pin", baseHex);
     pointerEl.style.setProperty("--pinHi", mixWithWhite(baseHex, 0.65));
   }
-function showResult(text) {
+
+  function showResult(text){
     resultEl.textContent = text;
     resultEl.style.display = "block";
   }
   function hideResult(){ resultEl.style.display = "none"; }
 
-  function downloadJSON(filename, dataObj) {
+  function downloadJSON(filename, dataObj){
     const blob = new Blob([JSON.stringify(dataObj, null, 2)], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -604,21 +651,19 @@ function showResult(text) {
     URL.revokeObjectURL(url);
   }
 
-  function exportState() {
+  function exportState(){
     const raw = itemsTa.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     const payload = {
       version: 1,
       exported_at: new Date().toISOString(),
       items: raw,
-      settings: {
-        removeWinner: !!removeWinnerEl.checked
-      }
+      settings: { removeWinner: !!removeWinnerEl.checked }
     };
     const safeDate = new Date().toISOString().slice(0,10);
     downloadJSON(`wheel_${safeDate}.json`, payload);
   }
 
-  function importStateFromText(text) {
+  function importStateFromText(text){
     let obj;
     try { obj = JSON.parse(text); } catch { throw new Error("ملف JSON غير صالح."); }
     const importedItems = Array.isArray(obj?.items) ? obj.items : null;
@@ -634,69 +679,267 @@ function showResult(text) {
     apply();
   }
 
-  function easeOutCubic(t){ return 1 - Math.pow(1-t,3); }
-
-  function animateToIndex(index) {
-    return new Promise(resolve => {
-      const n = items.length;
-      const step = (Math.PI*2) / n;
-
-      // We want the selected slice midpoint to align under pointer at right (0 rad)
-      // Pointer sees rel = POINTER - (START_OFFSET + rotation). For index i, mid = i*step + step/2
-      // Solve for rotation_end so that mid == rel:
-      // rel = normalize(POINTER - (START_OFFSET + rotation_end))
-      // We can pick rotation_end so that (START_OFFSET + rotation_end) == POINTER - mid (mod 2pi)
-      const targetMid = index * step + (step/2);
-      const desired = (POINTER_ANGLE - targetMid) - START_OFFSET; // base rotation to land exactly
-
-      // add extra spins
-      const spins = 8 + Math.random()*2; // 8..10
-      const start = rotation;
-      const end = desired + spins * Math.PI*2;
-
-      const dur = 2600;
-      const t0 = performance.now();
-
-      function frame(t){
-        const p = Math.min(1, (t - t0) / dur);
-        const e = easeOutCubic(p);
-        rotation = start + (end - start) * e;
-        draw();
-        if (p < 1) requestAnimationFrame(frame);
-        else resolve();
-      }
-      requestAnimationFrame(frame);
-    });
+  function apply(){
+    parseItemsFromTextarea();
+    draw();
+    hideResult();
   }
 
-  function getEligibleIndices() {
+  // ===== Smart / eligibility =====
+  function getEligibleIndices(){
     const eligible = [];
     for (let i=0; i<items.length; i++) {
       const title = items[i];
-      if (remainingToday(title) > 0) eligible.push(i);
+      if (remainingToday(title) <= 0) continue;
+      eligible.push(i);
     }
     return eligible;
   }
 
-  async function spin() {
-    if (spinning || items.length < 2) return;
-    spinning = true;
-    spinBtn.style.pointerEvents = "none";
-    hideResult();
+  function weightedPick(eligible){
+    // Mechanical spin is physics-based. We still choose a "preferred" index to steer probabilities.
+    // We implement it by setting the initial omega and friction slightly (not forced landing).
+    // But final winner is ALWAYS whatever ends under pointer.
+    const pool = [];
+    for (const i of eligible){
+      const t = items[i];
+      let w = 10;
+      if ((capsByTitle[t]||0) > 0) w = 4; // limited prizes rarer
+      if (t.includes("كود")) w = 20;
+      if (t === lastWinner) w = Math.max(1, Math.floor(w*0.25));
+      const used = getWinsToday(t);
+      if (used > 0) w = Math.max(1, w - used*3);
+      for (let k=0; k<w; k++) pool.push(i);
+    }
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
 
-    // Choose winner index from eligible items only (enforces the 2/day cap)
-    const eligible = getEligibleIndices();
-    if (!eligible.length) {
-      showResult("لا توجد جوائز متاحة اليوم (داخل الجلسة).");
-      spinning = false;
-      spinBtn.style.pointerEvents = "auto";
+  // ===== Mechanical sounds =====
+  function playTick(){
+    if (!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(900 + Math.random()*180, audioCtx.currentTime);
+    g.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+    o.connect(g).connect(audioCtx.destination);
+    o.start();
+    o.stop(audioCtx.currentTime + 0.04);
+  }
+
+  function playClapFast(){
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = "square";
+    o.frequency.setValueAtTime(520, t);
+    o.frequency.exponentialRampToValueAtTime(220, t + 0.12);
+    g.gain.setValueAtTime(0.35, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t);
+    o.stop(t + 0.22);
+  }
+
+  function wobblePointer(){
+    if (!pointerEl) return;
+    pointerEl.animate([
+      { transform: "translateY(-50%) rotate(0deg)" },
+      { transform: "translateY(-50%) rotate(-8deg)" },
+      { transform: "translateY(-50%) rotate(0deg)" }
+    ], { duration: 80, easing: "ease-out" });
+  }
+
+  function tickIfCrossed(){
+    const idx = getIndexAtPointer();
+    if (idx !== lastTickIdx){
+      lastTickIdx = idx;
+      playTick();
+      wobblePointer();
+    }
+  }
+
+  // ===== FX (fast fireworks) =====
+  let fxRunning = false;
+  let fxParts = [];
+  let fxEndsAt = 0;
+
+  function launchFireworksFast(){
+    resizeFx();
+    fx.style.display = "block";
+    fxRunning = true;
+    fxParts = [];
+    fxEndsAt = performance.now() + 700; // fast
+
+    const bursts = 6;
+    for (let b=0; b<bursts; b++) {
+      setTimeout(() => {
+        spawnBurst(
+          0.2 + Math.random()*0.6,
+          0.2 + Math.random()*0.5,
+          70 + Math.floor(Math.random()*35)
+        );
+      }, b*70);
+    }
+
+    if (!rafFx) rafFx = requestAnimationFrame(fxFrame);
+  }
+
+  function spawnBurst(nx, ny, count){
+    const x = nx * window.innerWidth;
+    const y = ny * window.innerHeight;
+    const base = [
+      [255, 90, 90],
+      [90, 190, 255],
+      [120, 255, 160],
+      [255, 210, 90],
+      [220, 120, 255]
+    ][Math.floor(Math.random()*5)];
+
+    for (let i=0; i<count; i++){
+      const a = Math.random() * Math.PI * 2;
+      const sp = 10 + Math.random()*10; // FAST
+      fxParts.push({
+        x, y,
+        vx: Math.cos(a)*sp,
+        vy: Math.sin(a)*sp,
+        life: 26 + Math.random()*18,
+        r: 2 + Math.random()*2,
+        c: base,
+        g: 0.35
+      });
+    }
+  }
+
+  let rafFx = null;
+  function fxFrame(){
+    if (!fxRunning) return;
+    const now = performance.now();
+
+    fxCtx.clearRect(0,0,window.innerWidth, window.innerHeight);
+    fxCtx.globalCompositeOperation = "lighter";
+
+    for (let i=fxParts.length-1; i>=0; i--) {
+      const p = fxParts[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.92;
+      p.vy = p.vy * 0.92 + p.g;
+      p.life -= 1;
+
+      const alpha = Math.max(0, Math.min(1, p.life / 40));
+      fxCtx.beginPath();
+      fxCtx.arc(p.x, p.y, p.r*3, 0, Math.PI*2);
+      fxCtx.fillStyle = `rgba(${p.c[0]},${p.c[1]},${p.c[2]},${alpha*0.25})`;
+      fxCtx.fill();
+
+      fxCtx.beginPath();
+      fxCtx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      fxCtx.fillStyle = `rgba(${p.c[0]},${p.c[1]},${p.c[2]},${alpha})`;
+      fxCtx.fill();
+
+      if (p.life <= 0) fxParts.splice(i,1);
+    }
+
+    if (now > fxEndsAt && fxParts.length === 0) {
+      fxRunning = false;
+      fx.style.display = "none";
+      rafFx = null;
       return;
     }
 
-    const chosenIndex = eligible[Math.floor(Math.random() * eligible.length)];
-    const winner = items[chosenIndex];
+    rafFx = requestAnimationFrame(fxFrame);
+  }
 
-    await animateToIndex(chosenIndex);
+  function showWinnerModal(text){
+    winnerText.textContent = text;
+    winnerBackdrop.style.display = "flex";
+  }
+  function closeWinner(){
+    winnerBackdrop.style.display = "none";
+  }
+
+  // ===== Mechanical spin (physics-based) =====
+  function canSpin(){
+    const now = Date.now();
+    if (now - lastSpinAt < 600) return false; // prevent double tap
+    lastSpinAt = now;
+    return true;
+  }
+
+  function spinPhysics(){
+    ensureAudio();
+    if (!canSpin()) return;
+    if (spinning || items.length < 2) return;
+
+    hideResult();
+    closeWinner();
+
+    const eligible = getEligibleIndices();
+    if (!eligible.length) {
+      showResult("لا توجد جوائز متاحة اليوم (داخل الجلسة)." );
+      return;
+    }
+
+    // We pick a "preferred" target to adjust how long/fast it spins.
+    const pref = weightedPick(eligible);
+
+    spinning = true;
+    spinBtn.style.pointerEvents = "none";
+
+    // High random start speed
+    omega = 1.1 + Math.random()*0.9;
+    // Slightly bias duration by pref rarity (longer spins for rarer items)
+    const t = items[pref];
+    const limited = (capsByTitle[t]||0) > 0;
+    const extra = limited ? 0.015 : 0;
+
+    // dynamic friction curve
+    function step(){
+      rotation += omega;
+
+      const fr = (omega > 0.35) ? 0.992 : (omega > 0.12) ? 0.985 : (0.972 + extra);
+      omega *= fr;
+
+      draw();
+      tickIfCrossed();
+
+      if (omega > 0.002) {
+        rafSpin = requestAnimationFrame(step);
+      } else {
+        omega = 0;
+        spinning = false;
+        spinBtn.style.pointerEvents = "auto";
+        settleAndFinalize();
+      }
+    }
+
+    step();
+  }
+
+  function settleAndFinalize(){
+    // tiny settle bounce
+    rotation += 0.018;
+    draw();
+    setTimeout(() => {
+      rotation -= 0.010;
+      draw();
+      finalizeWinner();
+    }, 60);
+  }
+
+  function finalizeWinner(){
+    const idx = getIndexAtPointer();
+    const winner = items[idx];
+
+    // Enforce cap at final (never show impossible)
+    if (remainingToday(winner) <= 0) {
+      // If landed on capped item, just show a message and do NOT count
+      showResult("هذه الجائزة مقفلة اليوم داخل الجلسة. لف مرة ثانية.");
+      return;
+    }
 
     // Apply cap counters
     if ((capsByTitle[winner] || 0) > 0) {
@@ -704,11 +947,17 @@ function showResult(text) {
       updateCapsInfo();
     }
 
-    showResult(`النتيجة: ${winner}`);
+    lastWinner = winner;
 
-    // Optional remove winner (this overrides cap logic by removing slice)
+    // FX + sound
+    playClapFast();
+    launchFireworksFast();
+
+    showWinnerModal(winner);
+
+    // Optional remove winner
     if (removeWinnerEl.checked) {
-      items.splice(chosenIndex, 1);
+      items.splice(idx, 1);
       itemsTa.value = items.join("\n");
       if (items.length < 2) {
         items = ["عنصر 1","عنصر 2"];
@@ -717,24 +966,30 @@ function showResult(text) {
       draw();
       updateCapsInfo();
     }
-
-    spinning = false;
-    spinBtn.style.pointerEvents = "auto";
   }
 
-  function apply() {
-    parseItemsFromTextarea();
-    draw();
-    hideResult();
-  }
-
-  // Modal controls
+  // ===== Modal controls =====
   function openModal(){ modalBackdrop.style.display = "flex"; updateCapsInfo(); }
   function close(){ modalBackdrop.style.display = "none"; }
   openSettings.addEventListener("click", openModal);
   closeModal.addEventListener("click", close);
   modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) close(); });
-  window.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape") { close(); closeWinner(); } });
+
+  // Winner modal controls
+  winnerClose.addEventListener("click", closeWinner);
+  winnerBackdrop.addEventListener("click", (e) => { if (e.target === winnerBackdrop) closeWinner(); });
+  winnerSave.addEventListener("click", async () => {
+    const text = winnerText.textContent || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      winnerSave.textContent = "تم";
+      setTimeout(()=> winnerSave.textContent = "حفظ", 700);
+    } catch {
+      // fallback
+      showResult(`النتيجة: ${text}`);
+    }
+  });
 
   // Import/Export
   exportBtn.addEventListener("click", exportState);
@@ -751,7 +1006,6 @@ function showResult(text) {
     }
   });
 
-  // drag/drop
   wheelWrap.addEventListener("dragover", (e) => { e.preventDefault(); });
   wheelWrap.addEventListener("drop", async (e) => {
     e.preventDefault();
@@ -781,14 +1035,15 @@ function showResult(text) {
   });
 
   // Spin
-  spinBtn.addEventListener("click", spin);
-  canvas.addEventListener("click", spin);
-  canvas.addEventListener("touchend", (e) => { e.preventDefault(); spin(); }, { passive:false });
+  spinBtn.addEventListener("click", spinPhysics);
+  canvas.addEventListener("click", spinPhysics);
+  canvas.addEventListener("touchend", (e) => { e.preventDefault(); spinPhysics(); }, { passive:false });
 
   // init
   buildDefaultList();
   apply();
   resizeCanvas();
+  resizeFx();
 })();
 </script>
 </body>
