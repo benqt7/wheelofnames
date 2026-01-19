@@ -246,7 +246,7 @@
     }
     .prize-item{
       display:grid;
-      grid-template-columns: 1fr auto auto auto;
+      grid-template-columns: 1fr auto auto auto auto;
       gap:10px;
       align-items:center;
       padding:12px 14px;
@@ -311,6 +311,26 @@
     }
     .prize-item .delete-btn:hover{
       background:#b91c1c;
+    }
+
+    .prize-item .edit-btn{
+      width:36px;
+      height:36px;
+      border-radius:8px;
+      border:1px solid #dbe2ea;
+      background:#eef2f7;
+      color:#0f172a;
+      cursor:pointer;
+      font-size:16px;
+      font-weight:900;
+      transition: all 0.15s;
+    }
+    .prize-item .edit-btn:hover{
+      background:#e6edf5;
+    }
+    .prize-item .edit-btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
     }
 
     .add-prize-btn{
@@ -495,6 +515,93 @@
         justify-content:flex-end;
       }
     }
+  /* ===== UX Dialog (replacement for native alert/confirm/prompt) ===== */
+  .uxd-backdrop{
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 9999;
+    padding: 18px;
+  }
+  .uxd-modal{
+    width: min(720px, 92vw);
+    background: #2f3136;
+    color: #f2f2f2;
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 18px;
+    box-shadow: 0 18px 60px rgba(0,0,0,.45);
+    padding: 18px 18px 14px;
+    transform: translateY(10px);
+    opacity: 0;
+    transition: transform .18s ease, opacity .18s ease;
+    position: relative;
+    direction: rtl;
+  }
+  .uxd-backdrop.show .uxd-modal{
+    transform: translateY(0);
+    opacity: 1;
+  }
+  .uxd-title{
+    font-size: 20px;
+    font-weight: 800;
+    margin: 2px 0 10px;
+  }
+  .uxd-msg{
+    font-size: 15px;
+    line-height: 1.7;
+    opacity: .95;
+    margin-bottom: 12px;
+  }
+  .uxd-input{
+    width: 100%;
+    height: 52px;
+    border-radius: 14px;
+    border: 2px solid rgba(110,206,235,.85);
+    background: rgba(0,0,0,.15);
+    color: #fff;
+    font-size: 20px;
+    padding: 8px 14px;
+    outline: none;
+  }
+  .uxd-actions{
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 14px;
+  }
+  .uxd-btn{
+    border: none;
+    border-radius: 14px;
+    padding: 12px 18px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform .08s ease, opacity .15s ease;
+    min-width: 92px;
+  }
+  .uxd-btn:active{ transform: scale(.98); }
+  .uxd-ok{ background: #6ECEEB; color: #0c1a1f; }
+  .uxd-cancel{ background: rgba(255,255,255,.12); color: #fff; }
+  .uxd-x{
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    border: none;
+    background: rgba(255,255,255,.10);
+    color: #fff;
+    font-size: 22px;
+    line-height: 38px;
+    cursor: pointer;
+  }
+  .uxd-x:active{ transform: scale(.98); }
+
   </style>
 </head>
 <body>
@@ -567,6 +674,20 @@
   <!-- FX Canvas -->
   <canvas id="fx"></canvas>
 
+  <!-- UX Dialog (replaces native alert/confirm/prompt) -->
+  <div id="uxdBackdrop" class="uxd-backdrop" style="display:none">
+    <div class="uxd-modal" role="dialog" aria-modal="true">
+      <button id="uxdX" class="uxd-x" type="button" aria-label="إغلاق">✕</button>
+      <div id="uxdTitle" class="uxd-title">تنبيه</div>
+      <div id="uxdMsg" class="uxd-msg"></div>
+      <input id="uxdInput" class="uxd-input" type="number" inputmode="numeric" min="1" step="1" />
+      <div class="uxd-actions">
+        <button id="uxdCancel" type="button" class="uxd-btn uxd-cancel">إلغاء</button>
+        <button id="uxdOk" type="button" class="uxd-btn uxd-ok">حسنا</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 (() => {
   // ===== Default Prizes =====
@@ -608,6 +729,92 @@
   const addPrizeBtn = document.getElementById("addPrizeBtn");
   const saveBtn = document.getElementById("saveBtn");
   const resetStatsBtn = document.getElementById("resetStatsBtn");
+
+  // ===== Styled dialogs (replace ugly browser prompt/confirm/alert) =====
+  const uxdBackdrop = document.getElementById("uxdBackdrop");
+  const uxdTitle = document.getElementById("uxdTitle");
+  const uxdMsg = document.getElementById("uxdMsg");
+  const uxdInput = document.getElementById("uxdInput");
+  const uxdOk = document.getElementById("uxdOk");
+  const uxdCancel = document.getElementById("uxdCancel");
+  const uxdX = document.getElementById("uxdX");
+
+  let uxdResolver = null;
+
+  function uxdClose(result){
+    if (!uxdBackdrop) return;
+    uxdBackdrop.classList.remove('show');
+    uxdBackdrop.style.display = 'none';
+    const r = uxdResolver;
+    uxdResolver = null;
+    if (r) r(result);
+  }
+
+  function uxdOpen({title, msg, mode, defaultValue=''}){
+    return new Promise(resolve => {
+      uxdResolver = resolve;
+      uxdTitle.textContent = title || 'تنبيه';
+      uxdMsg.textContent = msg || '';
+
+      const wantInput = mode === 'prompt';
+      uxdInput.style.display = wantInput ? 'block' : 'none';
+      uxdCancel.style.display = mode === 'alert' ? 'none' : 'inline-block';
+
+      if (wantInput){
+        uxdInput.value = String(defaultValue ?? '');
+        setTimeout(() => uxdInput.focus(), 0);
+      }
+
+      uxdBackdrop.style.display = 'flex';
+      requestAnimationFrame(() => uxdBackdrop.classList.add('show'));
+
+      const onKey = (ev) => {
+        if (!uxdResolver) return;
+        if (ev.key === 'Escape'){
+          ev.preventDefault();
+          document.removeEventListener('keydown', onKey);
+          uxdClose(null);
+        }
+        if (ev.key === 'Enter'){
+          ev.preventDefault();
+          document.removeEventListener('keydown', onKey);
+          if (mode === 'prompt') return uxdClose(uxdInput.value);
+          if (mode === 'confirm') return uxdClose(true);
+          return uxdClose(true);
+        }
+      };
+      document.addEventListener('keydown', onKey);
+
+      const cleanup = () => document.removeEventListener('keydown', onKey);
+
+      uxdOk.onclick = () => { cleanup();
+        if (mode === 'prompt') return uxdClose(uxdInput.value);
+        if (mode === 'confirm') return uxdClose(true);
+        return uxdClose(true);
+      };
+      uxdCancel.onclick = () => { cleanup(); uxdClose(null); };
+      uxdX.onclick = () => { cleanup(); uxdClose(null); };
+      uxdBackdrop.onclick = (e) => {
+        if (e.target === uxdBackdrop){ cleanup(); uxdClose(null); }
+      };
+    });
+  }
+
+  async function uxdAlert(msg, title='تنبيه'){
+    await uxdOpen({title, msg, mode:'alert'});
+  }
+  async function uxdConfirm(msg, title='تأكيد'){
+    const r = await uxdOpen({title, msg, mode:'confirm'});
+    return r === true;
+  }
+  async function uxdPromptInt(msg, defaultValue=1, title='أدخل رقم'){
+    const raw = await uxdOpen({title, msg, mode:'prompt', defaultValue});
+    if (raw === null) return null;
+    const n = parseInt(String(raw).trim(), 10);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return n;
+  }
+
   const exportBtn = document.getElementById("exportBtn");
   const importBtn = document.getElementById("importBtn");
   const importFile = document.getElementById("importFile");
@@ -675,6 +882,15 @@
     } else {
       prizes = JSON.parse(JSON.stringify(DEFAULT_PRIZES));
       winsToday = {};
+
+    // Normalize maxWinsMode (migration)
+    prizes.forEach(p => {
+      if (p.maxWinsMode !== "custom" && p.maxWinsMode !== "preset") {
+        const mw = p.maxWins;
+        const isCustomVal = Number.isFinite(mw) && mw > 0 && ![1,2,3,4,5,0,-1].includes(mw);
+        p.maxWinsMode = isCustomVal ? "custom" : "preset";
+      }
+    });
     }
     
     resizeCanvas();
@@ -1311,43 +1527,82 @@ finalizeWinner();
       const item = document.createElement("div");
       item.className = "prize-item" + (prize.enabled ? "" : " disabled");
       
+      const isCustomMode = prize.maxWinsMode === "custom";
       item.innerHTML = `
         <input type="text" value="${prize.title}" data-index="${index}" class="prize-title" />
         <select data-index="${index}" class="prize-max">
-          <option value="1" ${prize.maxWins === 1 ? "selected" : ""}>مرة واحدة</option>
-          <option value="2" ${prize.maxWins === 2 ? "selected" : ""}>مرتين</option>
-          <option value="3" ${prize.maxWins === 3 ? "selected" : ""}>3 مرات</option>
-          <option value="5" ${prize.maxWins === 5 ? "selected" : ""}>5 مرات</option>
-          <option value="0" ${prize.maxWins === 0 ? "selected" : ""}>∞ لا نهائي</option>
-          <option value="-1" ${prize.maxWins === -1 ? "selected" : ""}>منتهي</option>
+          <option value="1" ${(!isCustomMode && prize.maxWins === 1) ? "selected" : ""}>مرة واحدة</option>
+          <option value="2" ${(!isCustomMode && prize.maxWins === 2) ? "selected" : ""}>مرتين</option>
+          <option value="3" ${(!isCustomMode && prize.maxWins === 3) ? "selected" : ""}>3 مرات</option>
+          <option value="4" ${(!isCustomMode && prize.maxWins === 4) ? "selected" : ""}>4 مرات</option>
+          <option value="5" ${(!isCustomMode && prize.maxWins === 5) ? "selected" : ""}>5 مرات</option>
+          <option value="custom" ${isCustomMode ? "selected" : ""}>عدد حر</option>
+          <option value="0" ${(!isCustomMode && prize.maxWins === 0) ? "selected" : ""}>∞ لا نهائي</option>
+          <option value="-1" ${(!isCustomMode && prize.maxWins === -1) ? "selected" : ""}>منتهي</option>
         </select>
+        <button class="edit-btn" data-index="${index}" title="تعديل العدد" ${isCustomMode ? "" : "disabled"}>✎</button>
         <button class="toggle-btn ${prize.enabled ? "active" : "inactive"}" data-index="${index}">
           ${prize.enabled ? "✓" : "✗"}
         </button>
         <button class="delete-btn" data-index="${index}">🗑</button>
       `;
-      
+
       prizeListEl.appendChild(item);
     });
 
     // Event listeners
     prizeListEl.querySelectorAll(".prize-title").forEach(input => {
       input.addEventListener("change", (e) => {
-        const idx = parseInt(e.target.dataset.index);
+        const idx = parseInt(e.currentTarget.dataset.index);
         prizes[idx].title = e.target.value.trim() || "جائزة";
       });
     });
 
     prizeListEl.querySelectorAll(".prize-max").forEach(select => {
-      select.addEventListener("change", (e) => {
-        const idx = parseInt(e.target.dataset.index);
-        prizes[idx].maxWins = parseInt(e.target.value);
+      select.addEventListener("change", async (e) => {
+        const idx = parseInt(e.currentTarget.dataset.index);
+        const prev = prizes[idx].maxWins;
+        const prevMode = prizes[idx].maxWinsMode;
+        const v = e.target.value;
+
+        if (v === "custom") {
+          const current = (!Number.isFinite(prev) || prev <= 0 || [1,2,3,4,5,0,-1].includes(prev)) ? 2 : prev;
+          const n = await uxdPromptInt("اكتب عدد المرات (رقم صحيح):", current, "عدد حر");
+          if (n === null) {
+            prizes[idx].maxWins = prev;
+            prizes[idx].maxWinsMode = prevMode;
+            renderPrizeList();
+            return;
+          }
+          prizes[idx].maxWins = n;
+          prizes[idx].maxWinsMode = "custom";
+          renderPrizeList();
+          return;
+        }
+
+        prizes[idx].maxWins = parseInt(v, 10);
+        prizes[idx].maxWinsMode = "preset";
+        renderPrizeList();
       });
     });
 
+    prizeListEl.querySelectorAll(".edit-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const idx = parseInt(e.currentTarget.dataset.index);
+        const prev = prizes[idx].maxWins;
+        const current = (!Number.isFinite(prev) || prev <= 0 || [1,2,3,4,5,0,-1].includes(prev)) ? 2 : prev;
+        const n = await uxdPromptInt("اكتب عدد المرات (رقم صحيح):", current, "تعديل العدد");
+        if (n === null) return;
+        prizes[idx].maxWins = n;
+        prizes[idx].maxWinsMode = "custom";
+        renderPrizeList();
+      });
+    });
+
+
     prizeListEl.querySelectorAll(".toggle-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
-        const idx = parseInt(e.target.dataset.index);
+        const idx = parseInt(e.currentTarget.dataset.index);
         prizes[idx].enabled = !prizes[idx].enabled;
         renderPrizeList();
       });
@@ -1355,12 +1610,12 @@ finalizeWinner();
 
     prizeListEl.querySelectorAll(".delete-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
-        const idx = parseInt(e.target.dataset.index);
+        const idx = parseInt(e.currentTarget.dataset.index);
         if (prizes.length > 2) {
           prizes.splice(idx, 1);
           renderPrizeList();
         } else {
-          alert("يجب أن يكون هناك جائزتين على الأقل!");
+          uxdAlert("يجب أن يكون هناك جائزتين على الأقل!");
         }
       });
     });
@@ -1421,7 +1676,7 @@ finalizeWinner();
         throw new Error("Invalid format");
       }
     } catch (e) {
-      alert("❌ ملف غير صالح!");
+      uxdAlert("❌ ملف غير صالح!");
     }
   }
 
@@ -1459,8 +1714,8 @@ finalizeWinner();
     setTimeout(hideResult, 2000);
   });
 
-  resetStatsBtn.addEventListener("click", () => {
-    if (confirm("هل أنت متأكد من إعادة تعيين جميع العدادات؟")) {
+  resetStatsBtn.addEventListener("click", async () => {
+    if (await uxdConfirm("هل أنت متأكد من إعادة تعيين جميع العدادات؟")) {
       winsToday = {};
       saveData();
       draw();
