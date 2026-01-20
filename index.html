@@ -37,9 +37,6 @@
           display:flex;
           align-items:center;
           justify-content:center;
-          flex-direction:column;
-          align-items:center;
-          justify-content:flex-start;
           inset:0;
           min-height:100svh;
           min-height:100dvh;
@@ -53,7 +50,6 @@
         }
     
         .wheel-wrap{
-          
           width:min(92vmin, 860px);
           height:min(92vmin, 860px);
           position:relative;
@@ -62,25 +58,24 @@
         }
     
         /* Caption above the wheel */
-                                .wheel-caption{
-          position:absolute;
-          top:clamp(12px, 6vh, 72px);
+                .wheel-caption{
+          position:fixed;
+          top:calc(env(safe-area-inset-top) + 12px);
           left:50%;
           transform:translateX(-50%);
           padding:14px 28px;
-          background:rgba(255,255,255,.88);
+          background:rgba(255,255,255,.9);
           border:1px solid var(--stroke);
           border-radius:999px;
           box-shadow:0 10px 24px rgba(0,0,0,.12);
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
           font-weight:950;
-          font-size:clamp(18px, 3.5vw, 34px);
+          font-size:clamp(18px, 4vw, 32px);
           line-height:1;
           white-space:nowrap;
           color:#1a3151;
-          text-align:center;
-          z-index:20;
+          z-index:999;
           pointer-events:none;
         }
 
@@ -95,8 +90,7 @@
         }
     
     @media (max-width: 768px){
-          .wheel-wrap{
-           width:min(92vw, 78svh); height:min(92vw, 78svh); }
+          .wheel-wrap{ width:min(92vw, 78svh); height:min(92vw, 78svh); }
           .wheel-caption{ top:-64px; font-size:24px; padding:12px 20px; }
           .center-btn{ width:96px; height:96px; font-size:14px; line-height:1; }
           .pointer{ right:-12px; border-top:14px solid transparent; border-bottom:14px solid transparent; border-right:28px solid var(--pin, #f0f2f5); }
@@ -105,8 +99,7 @@
           .chip{ padding:9px 10px; font-size:12px; }
         }
         @media (max-height: 520px){
-          .wheel-wrap{
-           width:min(86vw, 86svh); height:min(86vw, 86svh); }
+          .wheel-wrap{ width:min(86vw, 86svh); height:min(86vw, 86svh); }
           .wheel-caption{ top:-58px; font-size:22px; }
           .center-btn{ width:86px; height:86px; font-size:13px; line-height:1; }
         }
@@ -650,12 +643,12 @@
       </style>
     </head>
     <body>
+  <div class="wheel-caption" id="wheelCaption">إلعبها مع تمهير</div>
       <div class="ui">
         <div class="chip" id="openSettings">الإعدادات <span>⚙️</span></div>
       </div>
     
       <div class="stage">
-        <div class="wheel-caption" id="wheelCaption">إلعبها مع تمهير</div>
         <div class="wheel-wrap" id="wheelWrap">
           
           <div class="pointer" aria-hidden="true"></div>
