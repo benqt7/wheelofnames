@@ -1,1755 +1,1779 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>عجلة الحظ</title>
-  <style>
-    :root{
-      --bg1:#f7f9ff;
-      --bg2:#ffffff;
-      --stroke:#d6dde6;
-      --text:#111;
-      --muted:#6b7280;
-      --chip:#ffffffcc;
-      --chipBorder:#d6dde6;
-      --primary:#2563eb;
-      --danger:#dc2626;
-      --success:#16a34a;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%;}
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial;
-      color:var(--text);
-      background:linear-gradient(180deg, var(--bg1), var(--bg2) 40%);
-      overflow:hidden;
-      min-height:100svh;
-      min-height:100dvh;
-      height:100vh;
-      height:-webkit-fill-available;
-    }
-
-    .stage{
-      position:fixed;
-      inset:0;
-      min-height:100svh;
-      min-height:100dvh;
-      height:100vh;
-      height:-webkit-fill-available;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
-               max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
-    }
-
-    .wheel-wrap{
-      width:min(92vmin, 860px);
-      height:min(92vmin, 860px);
-      position:relative;
-      touch-action:manipulation;
-      user-select:none;
-    }
-
+    <!doctype html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+      <title>عجلة الحظ</title>
+      <style>
+        :root{
+          --bg1:#f7f9ff;
+          --bg2:#ffffff;
+          --stroke:#d6dde6;
+          --text:#111;
+          --muted:#6b7280;
+          --chip:#ffffffcc;
+          --chipBorder:#d6dde6;
+          --primary:#2563eb;
+          --danger:#dc2626;
+          --success:#16a34a;
+        }
+        *{box-sizing:border-box}
+        html,body{height:100%;}
+        body{
+          margin:0;
+          font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial;
+          color:var(--text);
+          background:linear-gradient(180deg, var(--bg1), var(--bg2) 40%);
+          overflow:hidden;
+          min-height:100svh;
+          min-height:100dvh;
+          height:100vh;
+          height:-webkit-fill-available;
+        }
+    
+        .stage{
+          position:fixed;
+          inset:0;
+          min-height:100svh;
+          min-height:100dvh;
+          height:100vh;
+          height:-webkit-fill-available;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+                   max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+        }
+    
+        .wheel-wrap{
+          width:min(92vmin, 860px);
+          height:min(92vmin, 860px);
+          position:relative;
+          touch-action:manipulation;
+          user-select:none;
+        }
+    
+        /* Caption above the wheel */
+        .wheel-caption{
+          position:absolute;
+          left:50%;
+          top:-88px;
+          transform:translateX(-50%);
+          padding:14px 28px;
+          background:rgba(255,255,255,.88);
+          border:1px solid var(--stroke);
+          border-radius:999px;
+          box-shadow:0 10px 24px rgba(0,0,0,.12);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          font-weight:950;
+          font-size:34px;
+          line-height:1;
+          white-space:nowrap;
+          z-index:5;
+          pointer-events:none;
+        }
+    
     @media (max-width: 768px){
-      .wheel-wrap{ width:min(92vw, 78svh); height:min(92vw, 78svh); }
-      .center-btn{ width:96px; height:96px; font-size:14px; line-height:1; }
-      .pointer{ right:-12px; border-top:14px solid transparent; border-bottom:14px solid transparent; border-right:28px solid var(--pin, #f0f2f5); }
-      .pointer:before{ right:-28px; top:-14px; border-top:14px solid transparent; border-bottom:14px solid transparent; border-right:28px solid var(--pinHi, rgba(255,255,255,.9)); }
-      .ui{ top:max(10px, env(safe-area-inset-top)); left:max(10px, env(safe-area-inset-left)); gap:8px; }
-      .chip{ padding:9px 10px; font-size:12px; }
-    }
-    @media (max-height: 520px){
-      .wheel-wrap{ width:min(86vw, 86svh); height:min(86vw, 86svh); }
-      .center-btn{ width:86px; height:86px; font-size:13px; line-height:1; }
-    }
-    canvas{width:100%;height:100%;display:block}
-
-    .pointer{
-      position:absolute;
-      right:-16px;
-      top:50%;
-      transform:translateY(-50%);
-      width:0;height:0;
-      border-top:18px solid transparent;
-      border-bottom:18px solid transparent;
-      border-right:34px solid var(--pin, #f0f2f5);
-      filter:drop-shadow(0 6px 8px rgba(0,0,0,.18));
-      pointer-events:none;
-    }
-    .pointer:before{
-      content:"";
-      position:absolute;
-      right:-34px;
-      top:-18px;
-      width:0;height:0;
-      border-top:18px solid transparent;
-      border-bottom:18px solid transparent;
-      border-right:34px solid var(--pinHi, rgba(255,255,255,.9));
-      transform:translateX(3px);
-      opacity:.55;
-      pointer-events:none;
-    }
-
-    .center-btn{
-      position:absolute;
-      left:50%;
-      top:50%;
-      transform:translate(-50%,-50%);
-      width:128px;
-      height:128px;
-      border-radius:999px;
-      border:1px solid rgba(0,0,0,.08);
-      background:radial-gradient(circle at 30% 30%, #ffffff 0%, #f3f4f6 55%, #e5e7eb 100%);
-      box-shadow: 0 14px 28px rgba(0,0,0,.14);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-weight:900;
-      font-size:18px;
-      cursor:pointer;
-      user-select:none;
-      transition: transform 0.1s;
-    }
-    .center-btn:active{transform:translate(-50%,-50%) scale(.96)}
-
+          .wheel-wrap{ width:min(92vw, 78svh); height:min(92vw, 78svh); }
+          .wheel-caption{ top:-64px; font-size:24px; padding:12px 20px; }
+          .center-btn{ width:96px; height:96px; font-size:14px; line-height:1; }
+          .pointer{ right:-12px; border-top:14px solid transparent; border-bottom:14px solid transparent; border-right:28px solid var(--pin, #f0f2f5); }
+          .pointer:before{ right:-28px; top:-14px; border-top:14px solid transparent; border-bottom:14px solid transparent; border-right:28px solid var(--pinHi, rgba(255,255,255,.9)); }
+          .ui{ top:max(10px, env(safe-area-inset-top)); left:max(10px, env(safe-area-inset-left)); gap:8px; }
+          .chip{ padding:9px 10px; font-size:12px; }
+        }
+        @media (max-height: 520px){
+          .wheel-wrap{ width:min(86vw, 86svh); height:min(86vw, 86svh); }
+          .wheel-caption{ top:-58px; font-size:22px; }
+          .center-btn{ width:86px; height:86px; font-size:13px; line-height:1; }
+        }
+        canvas{width:100%;height:100%;display:block}
     
-
+        .pointer{
+          position:absolute;
+          right:-16px;
+          top:50%;
+          transform:translateY(-50%);
+          width:0;height:0;
+          border-top:18px solid transparent;
+          border-bottom:18px solid transparent;
+          border-right:34px solid var(--pin, #f0f2f5);
+          filter:drop-shadow(0 6px 8px rgba(0,0,0,.18));
+          pointer-events:none;
+        }
+        .pointer:before{
+          content:"";
+          position:absolute;
+          right:-34px;
+          top:-18px;
+          width:0;height:0;
+          border-top:18px solid transparent;
+          border-bottom:18px solid transparent;
+          border-right:34px solid var(--pinHi, rgba(255,255,255,.9));
+          transform:translateX(3px);
+          opacity:.55;
+          pointer-events:none;
+        }
     
+        .center-btn{
+          position:absolute;
+          left:50%;
+          top:50%;
+          transform:translate(-50%,-50%);
+          width:128px;
+          height:128px;
+          border-radius:999px;
+          border:1px solid rgba(0,0,0,.08);
+          background:radial-gradient(circle at 30% 30%, #ffffff 0%, #f3f4f6 55%, #e5e7eb 100%);
+          box-shadow: 0 14px 28px rgba(0,0,0,.14);
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-weight:900;
+          font-size:18px;
+          cursor:pointer;
+          user-select:none;
+          transition: transform 0.1s;
+        }
+        .center-btn:active{transform:translate(-50%,-50%) scale(.96)}
     
-
-    .center-btn.spinning{
-      opacity:0.9;
-      filter:saturate(0.9) brightness(0.98);
-    }
-
-.center-btn img#spinLogo{
-      width:84%;
-      height:84%;
-      object-fit:cover;
-      border-radius:999px;
-      display:block;
-      pointer-events:none;
-      user-select:none;
-      -webkit-user-drag:none;
-      box-shadow: 0 10px 22px rgba(0,0,0,.18);
-      border: 2px solid rgba(255,255,255,.65);
-    }
-.ui{
-      position:fixed;
-      top: max(12px, env(safe-area-inset-top));
-      left: max(12px, env(safe-area-inset-left));
-      display:flex;
-      gap:10px;
-      z-index:10;
-    }
-    .chip{
-      background:var(--chip);
-      border:1px solid var(--chipBorder);
-      border-radius:999px;
-      padding:10px 14px;
-      font-weight:800;
-      font-size:13px;
-      box-shadow:0 10px 24px rgba(0,0,0,.08);
-      cursor:pointer;
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      transition: transform 0.1s;
-    }
-    .chip:active{transform:scale(.97)}
-    .chip span{opacity:.85;font-weight:800}
-
-    .result{
-      position:fixed;
-      left:50%;
-      bottom: max(14px, env(safe-area-inset-bottom));
-      transform:translateX(-50%);
-      background:rgba(255,255,255,.95);
-      border:1px solid var(--stroke);
-      border-radius:999px;
-      padding:12px 18px;
-      box-shadow:0 10px 24px rgba(0,0,0,.12);
-      font-weight:800;
-      font-size:14px;
-      max-width:min(92vw, 740px);
-      text-align:center;
-      display:none;
-      z-index:10;
-    }
-
-    /* Modal */
-    .modal-backdrop{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.4);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:16px;
-      z-index:20;
-      backdrop-filter: blur(4px);
-    }
-    .modal{
-      width:min(720px, 94vw);
-      max-height:90vh;
-      background:#fff;
-      border:1px solid var(--stroke);
-      border-radius:20px;
-      box-shadow:0 25px 80px rgba(0,0,0,.25);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-    }
-    .modal header{
-      padding:16px 20px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      border-bottom:1px solid var(--stroke);
-      background:#fafbfc;
-    }
-    .modal header strong{font-size:15px;font-weight:900}
-    .modal header button{
-      border:0;
-      background:transparent;
-      font-size:20px;
-      cursor:pointer;
-      padding:8px 12px;
-      border-radius:10px;
-      transition: background 0.15s;
-    }
-    .modal header button:hover{background:#f0f0f0}
-    .modal .body{
-      padding:20px;
-      overflow-y:auto;
-      flex:1;
-    }
-
-    .section-title{
-      font-size:14px;
-      font-weight:900;
-      color:var(--text);
-      margin:0 0 12px 0;
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
-    .section-title span{font-size:18px}
-
-    .prize-list{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      margin-bottom:20px;
-    }
-    .prize-item{
-      display:grid;
-      grid-template-columns: 1fr auto auto auto auto;
-      gap:10px;
-      align-items:center;
-      padding:12px 14px;
-      background:#f8f9fa;
-      border:1px solid #e9ecef;
-      border-radius:12px;
-      transition: all 0.15s;
-    }
-    .prize-item.disabled{
-      opacity:0.5;
-      background:#f0f0f0;
-    }
-    .prize-item input[type="text"]{
-      border:1px solid #ddd;
-      border-radius:8px;
-      padding:8px 12px;
-      font-size:14px;
-      font-weight:700;
-      outline:none;
-      transition: border-color 0.15s;
-    }
-    .prize-item input[type="text"]:focus{
-      border-color:var(--primary);
-    }
-    .prize-item select{
-      border:1px solid #ddd;
-      border-radius:8px;
-      padding:8px 10px;
-      font-size:13px;
-      font-weight:700;
-      cursor:pointer;
-      background:#fff;
-      min-width:100px;
-    }
-    .prize-item .toggle-btn{
-      width:36px;
-      height:36px;
-      border-radius:8px;
-      border:none;
-      cursor:pointer;
-      font-size:16px;
-      transition: all 0.15s;
-    }
-    .prize-item .toggle-btn.active{
-      background:var(--success);
-      color:#fff;
-    }
-    .prize-item .toggle-btn.inactive{
-      background:#e0e0e0;
-      color:#666;
-    }
-    .prize-item .delete-btn{
-      width:36px;
-      height:36px;
-      border-radius:8px;
-      border:none;
-      background:var(--danger);
-      color:#fff;
-      cursor:pointer;
-      font-size:16px;
-      transition: all 0.15s;
-    }
-    .prize-item .delete-btn:hover{
-      background:#b91c1c;
-    }
-
-    .prize-item .edit-btn{
-      width:36px;
-      height:36px;
-      border-radius:8px;
-      border:1px solid #dbe2ea;
-      background:#eef2f7;
-      color:#0f172a;
-      cursor:pointer;
-      font-size:16px;
-      font-weight:900;
-      transition: all 0.15s;
-    }
-    .prize-item .edit-btn:hover{
-      background:#e6edf5;
-    }
-    .prize-item .edit-btn:disabled{
-      opacity:.45;
-      cursor:not-allowed;
-    }
-
-    .add-prize-btn{
-      width:100%;
-      padding:14px;
-      border:2px dashed #ccc;
-      border-radius:12px;
-      background:transparent;
-      color:#666;
-      font-size:14px;
-      font-weight:800;
-      cursor:pointer;
-      transition: all 0.15s;
-      margin-bottom:20px;
-    }
-    .add-prize-btn:hover{
-      border-color:var(--primary);
-      color:var(--primary);
-      background:rgba(37, 99, 235, 0.05);
-    }
-
-    .stats-box{
-      padding:14px 16px;
-      background:linear-gradient(135deg, #e0f2fe, #dbeafe);
-      border:1px solid #93c5fd;
-      border-radius:14px;
-      margin-bottom:16px;
-    }
-    .stats-box h4{
-      margin:0 0 10px 0;
-      font-size:13px;
-      color:#1e40af;
-    }
-    .stats-grid{
-      display:grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap:8px;
-    }
-    .stat-item{
-      display:flex;
-      justify-content:space-between;
-      font-size:12px;
-      padding:6px 10px;
-      background:rgba(255,255,255,.7);
-      border-radius:8px;
-    }
-    .stat-item .name{font-weight:700;color:#333}
-    .stat-item .count{font-weight:900;color:var(--primary)}
-    .stat-item.exhausted .count{color:var(--danger)}
-
-    .action-row{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:16px;
-    }
-    .btn{
-      border:0;
-      border-radius:10px;
-      padding:12px 18px;
-      cursor:pointer;
-      font-weight:800;
-      font-size:13px;
-      transition: all 0.15s;
-    }
-    .btn.primary{
-      background:var(--primary);
-      color:white;
-    }
-    .btn.primary:hover{background:#1d4ed8}
-    .btn.ghost{
-      background:#f0f0f0;
-      color:#333;
-      border:1px solid #ddd;
-    }
-    .btn.ghost:hover{background:#e5e5e5}
-    .btn.danger{
-      background:var(--danger);
-      color:white;
-    }
-    .btn.danger:hover{background:#b91c1c}
-
-    .note{
-      margin-top:16px;
-      padding:12px 14px;
-      font-size:12px;
-      color:#666;
-      line-height:1.6;
-      background:#fffbeb;
-      border:1px solid #fcd34d;
-      border-radius:10px;
-    }
-
-    /* Winner Modal */
-    #winnerBackdrop{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.5);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:16px;
-      z-index:40;
-    }
-    .winner-modal{
-      width:min(500px,94vw);
-      border-radius:20px;
-      overflow:hidden;
-      box-shadow:0 30px 100px rgba(0,0,0,.4);
-      animation: popIn 0.4s ease-out;
-    }
-    @keyframes popIn{
-      0%{transform:scale(0.8);opacity:0}
-      100%{transform:scale(1);opacity:1}
-    }
-    .winner-header{
-      background:linear-gradient(135deg, #2563eb, #1d4ed8);
-      color:#fff;
-      padding:16px 20px;
-      font-weight:900;
-      font-size:16px;
-      text-align:center;
-    }
-    .winner-body{
-      background:linear-gradient(180deg, #1a1a2e, #16213e);
-      color:#fff;
-      padding:40px 24px;
-      text-align:center;
-    }
-    .winner-text{
-      font-weight:950;
-      font-size:38px;
-      line-height:1.2;
-      margin-bottom:24px;
-      text-shadow: 0 4px 20px rgba(0,0,0,.3);
-    }
-    .winner-actions{
-      display:flex;
-      gap:12px;
-      justify-content:center;
-    }
-    .winner-actions button{
-      padding:12px 24px;
-      border-radius:12px;
-      border:none;
-      font-weight:900;
-      font-size:14px;
-      cursor:pointer;
-      transition: all 0.15s;
-    }
-    .winner-actions .close-btn{
-      background:rgba(255,255,255,.15);
-      color:#fff;
-    }
-    .winner-actions .close-btn:hover{background:rgba(255,255,255,.25)}
-    .winner-actions .copy-btn{
-      background:#3b82f6;
-      color:#fff;
-    }
-    .winner-actions .copy-btn:hover{background:#2563eb}
-
-    /* FX Canvas */
-    #fx{
-      position:fixed;
-      inset:0;
-      pointer-events:none;
-      display:none;
-      z-index:100;
-    }
-
-    html{ -webkit-text-size-adjust:100%; }
-    body{ overscroll-behavior:none; }
-
-    @media (max-width: 600px){
-      .prize-item{
-        grid-template-columns: 1fr;
-        gap:8px;
-      }
-      .prize-item > div:last-child{
-        display:flex;
-        gap:8px;
-        justify-content:flex-end;
-      }
-    }
-  /* ===== UX Dialog (replacement for native alert/confirm/prompt) ===== */
-  .uxd-backdrop{
-    position: fixed;
-    inset: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,.55);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    z-index: 9999;
-    padding: 18px;
-  }
-  .uxd-modal{
-    width: min(720px, 92vw);
-    background: #2f3136;
-    color: #f2f2f2;
-    border: 1px solid rgba(255,255,255,.10);
-    border-radius: 18px;
-    box-shadow: 0 18px 60px rgba(0,0,0,.45);
-    padding: 18px 18px 14px;
-    transform: translateY(10px);
-    opacity: 0;
-    transition: transform .18s ease, opacity .18s ease;
-    position: relative;
-    direction: rtl;
-  }
-  .uxd-backdrop.show .uxd-modal{
-    transform: translateY(0);
-    opacity: 1;
-  }
-  .uxd-title{
-    font-size: 20px;
-    font-weight: 800;
-    margin: 2px 0 10px;
-  }
-  .uxd-msg{
-    font-size: 15px;
-    line-height: 1.7;
-    opacity: .95;
-    margin-bottom: 12px;
-  }
-  .uxd-input{
-    width: 100%;
-    height: 52px;
-    border-radius: 14px;
-    border: 2px solid rgba(110,206,235,.85);
-    background: rgba(0,0,0,.15);
-    color: #fff;
-    font-size: 20px;
-    padding: 8px 14px;
-    outline: none;
-  }
-  .uxd-actions{
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 14px;
-  }
-  .uxd-btn{
-    border: none;
-    border-radius: 14px;
-    padding: 12px 18px;
-    font-weight: 800;
-    cursor: pointer;
-    transition: transform .08s ease, opacity .15s ease;
-    min-width: 92px;
-  }
-  .uxd-btn:active{ transform: scale(.98); }
-  .uxd-ok{ background: #6ECEEB; color: #0c1a1f; }
-  .uxd-cancel{ background: rgba(255,255,255,.12); color: #fff; }
-  .uxd-x{
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    border: none;
-    background: rgba(255,255,255,.10);
-    color: #fff;
-    font-size: 22px;
-    line-height: 38px;
-    cursor: pointer;
-  }
-  .uxd-x:active{ transform: scale(.98); }
-
-  </style>
-</head>
-<body>
-  <div class="ui">
-    <div class="chip" id="openSettings">الإعدادات <span>⚙️</span></div>
-  </div>
-
-  <div class="stage">
-    <div class="wheel-wrap" id="wheelWrap">
-      <div class="pointer" aria-hidden="true"></div>
-      <canvas id="wheel"></canvas>
-      <div class="center-btn" id="spinBtn"><img id="spinLogo" src="https://d.top4top.io/p_3671xhikl1.jpeg" alt="Logo" /></div>
-    </div>
-  </div>
-
-  <div class="result" id="result"></div>
-
-  <!-- Settings Modal -->
-  <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal">
-      <header>
-        <strong>⚙️ إعدادات الجوائز</strong>
-        <button id="closeModal">✕</button>
-      </header>
-      <div class="body">
         
-        <h3 class="section-title"><span>🎁</span> قائمة الجوائز</h3>
-        <div class="prize-list" id="prizeList"></div>
-        <button class="add-prize-btn" id="addPrizeBtn">+ إضافة جائزة جديدة</button>
-
-        <div class="stats-box">
-          <h4>📊 إحصائيات اليوم</h4>
-          <div class="stats-grid" id="statsGrid"></div>
-        </div>
-
-        <div class="action-row">
-          <button class="btn primary" id="saveBtn">💾 حفظ التغييرات</button>
-          <button class="btn ghost" id="resetStatsBtn">🔄 إعادة تعيين العدادات</button>
-          <button class="btn ghost" id="exportBtn">📤 تصدير</button>
-          <button class="btn ghost" id="importBtn">📥 استيراد</button>
-        </div>
-
-        <div class="note">
-          💡 <strong>ملاحظة:</strong> الإعدادات تُحفظ تلقائياً في المتصفح. لن تضيع بعد إغلاق الصفحة!<br>
-          • <strong>∞ لا نهائي:</strong> الجائزة تطلع دائماً<br>
-          • <strong>منتهي:</strong> الجائزة تظهر بالعجلة لكن لا يمكن الفوز بها
-          • <strong>مرة / مرتين:</strong> بعد الوصول للحد، الجائزة تنقفل لبقية اليوم
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Winner Modal -->
-  <div id="winnerBackdrop">
-    <div class="winner-modal">
-      <div class="winner-header">🎉 مبروك! لدينا فائز!</div>
-      <div class="winner-body">
-        <div class="winner-text" id="winnerText"></div>
-        <div class="winner-actions">
-          <button class="close-btn" id="winnerClose">إغلاق</button>
-          <button class="copy-btn" id="winnerCopy">📋 نسخ</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Hidden file input -->
-  <input type="file" id="importFile" accept="application/json" style="display:none" />
-
-  <!-- FX Canvas -->
-  <canvas id="fx"></canvas>
-
-  <!-- UX Dialog (replaces native alert/confirm/prompt) -->
-  <div id="uxdBackdrop" class="uxd-backdrop" style="display:none">
-    <div class="uxd-modal" role="dialog" aria-modal="true">
-      <button id="uxdX" class="uxd-x" type="button" aria-label="إغلاق">✕</button>
-      <div id="uxdTitle" class="uxd-title">تنبيه</div>
-      <div id="uxdMsg" class="uxd-msg"></div>
-      <input id="uxdInput" class="uxd-input" type="number" inputmode="numeric" min="1" step="1" />
-      <div class="uxd-actions">
-        <button id="uxdCancel" type="button" class="uxd-btn uxd-cancel">إلغاء</button>
-        <button id="uxdOk" type="button" class="uxd-btn uxd-ok">حسنا</button>
-      </div>
-    </div>
-  </div>
-
-<script>
-(() => {
-  // ===== Default Prizes =====
-  const DEFAULT_PRIZES = [
-    { title: "سماعة Jpl 520BT", maxWins: 2, enabled: true },
-    { title: "ساعة شاومي", maxWins: 2, enabled: true },
-    { title: "قلم ايباد", maxWins: 1, enabled: true },
-    { title: "سماعة هواوي", maxWins: 2, enabled: true },
-    { title: "شاحن متنقل", maxWins: 1, enabled: true },
-    { title: "تابلت سامسونج", maxWins: 1, enabled: false },
-    { title: "دورة مجانية", maxWins: 0, enabled: true },
-    { title: "كود 10%", maxWins: 0, enabled: true },
-    { title: "كود 30%", maxWins: 0, enabled: true },
-    { title: "كود 50%", maxWins: 0, enabled: true },
-  ];
-
-    const PALETTE = [
-    { fill: "#81cabd", text: "#ffffff" },
-    { fill: "#1a3151", text: "#ffffff" },
-  ];
-
-  const STORAGE_KEY = "luckyWheelData";
-
-  // DOM Elements
-  const wheelWrap = document.getElementById("wheelWrap");
-  const pointerEl = document.querySelector(".pointer");
-  const canvas = document.getElementById("wheel");
-  const ctx = canvas.getContext("2d");
-  const spinBtn = document.getElementById("spinBtn");
-  const resultEl = document.getElementById("result");
-  const fx = document.getElementById("fx");
-  const fxCtx = fx.getContext("2d");
-
-  const openSettings = document.getElementById("openSettings");
-  const modalBackdrop = document.getElementById("modalBackdrop");
-  const closeModal = document.getElementById("closeModal");
-  const prizeListEl = document.getElementById("prizeList");
-  const statsGrid = document.getElementById("statsGrid");
-  const addPrizeBtn = document.getElementById("addPrizeBtn");
-  const saveBtn = document.getElementById("saveBtn");
-  const resetStatsBtn = document.getElementById("resetStatsBtn");
-
-  // ===== Styled dialogs (replace ugly browser prompt/confirm/alert) =====
-  const uxdBackdrop = document.getElementById("uxdBackdrop");
-  const uxdTitle = document.getElementById("uxdTitle");
-  const uxdMsg = document.getElementById("uxdMsg");
-  const uxdInput = document.getElementById("uxdInput");
-  const uxdOk = document.getElementById("uxdOk");
-  const uxdCancel = document.getElementById("uxdCancel");
-  const uxdX = document.getElementById("uxdX");
-
-  let uxdResolver = null;
-
-  function uxdClose(result){
-    if (!uxdBackdrop) return;
-    uxdBackdrop.classList.remove('show');
-    uxdBackdrop.style.display = 'none';
-    const r = uxdResolver;
-    uxdResolver = null;
-    if (r) r(result);
-  }
-
-  function uxdOpen({title, msg, mode, defaultValue=''}){
-    return new Promise(resolve => {
-      uxdResolver = resolve;
-      uxdTitle.textContent = title || 'تنبيه';
-      uxdMsg.textContent = msg || '';
-
-      const wantInput = mode === 'prompt';
-      uxdInput.style.display = wantInput ? 'block' : 'none';
-      uxdCancel.style.display = mode === 'alert' ? 'none' : 'inline-block';
-
-      if (wantInput){
-        uxdInput.value = String(defaultValue ?? '');
-        setTimeout(() => uxdInput.focus(), 0);
-      }
-
-      uxdBackdrop.style.display = 'flex';
-      requestAnimationFrame(() => uxdBackdrop.classList.add('show'));
-
-      const onKey = (ev) => {
-        if (!uxdResolver) return;
-        if (ev.key === 'Escape'){
-          ev.preventDefault();
-          document.removeEventListener('keydown', onKey);
-          uxdClose(null);
+    
+        
+        
+    
+        .center-btn.spinning{
+          opacity:0.9;
+          filter:saturate(0.9) brightness(0.98);
         }
-        if (ev.key === 'Enter'){
-          ev.preventDefault();
-          document.removeEventListener('keydown', onKey);
-          if (mode === 'prompt') return uxdClose(uxdInput.value);
-          if (mode === 'confirm') return uxdClose(true);
-          return uxdClose(true);
+    
+    .center-btn img#spinLogo{
+          width:84%;
+          height:84%;
+          object-fit:cover;
+          border-radius:999px;
+          display:block;
+          pointer-events:none;
+          user-select:none;
+          -webkit-user-drag:none;
+          box-shadow: 0 10px 22px rgba(0,0,0,.18);
+          border: 2px solid rgba(255,255,255,.65);
         }
-      };
-      document.addEventListener('keydown', onKey);
-
-      const cleanup = () => document.removeEventListener('keydown', onKey);
-
-      uxdOk.onclick = () => { cleanup();
-        if (mode === 'prompt') return uxdClose(uxdInput.value);
-        if (mode === 'confirm') return uxdClose(true);
-        return uxdClose(true);
-      };
-      uxdCancel.onclick = () => { cleanup(); uxdClose(null); };
-      uxdX.onclick = () => { cleanup(); uxdClose(null); };
-      uxdBackdrop.onclick = (e) => {
-        if (e.target === uxdBackdrop){ cleanup(); uxdClose(null); }
-      };
-    });
-  }
-
-  async function uxdAlert(msg, title='تنبيه'){
-    await uxdOpen({title, msg, mode:'alert'});
-  }
-  async function uxdConfirm(msg, title='تأكيد'){
-    const r = await uxdOpen({title, msg, mode:'confirm'});
-    return r === true;
-  }
-  async function uxdPromptInt(msg, defaultValue=1, title='أدخل رقم'){
-    const raw = await uxdOpen({title, msg, mode:'prompt', defaultValue});
-    if (raw === null) return null;
-    const n = parseInt(String(raw).trim(), 10);
-    if (!Number.isFinite(n) || n <= 0) return null;
-    return n;
-  }
-
-  const exportBtn = document.getElementById("exportBtn");
-  const importBtn = document.getElementById("importBtn");
-  const importFile = document.getElementById("importFile");
-
-  const winnerBackdrop = document.getElementById("winnerBackdrop");
-  const winnerText = document.getElementById("winnerText");
-  const winnerClose = document.getElementById("winnerClose");
-  const winnerCopy = document.getElementById("winnerCopy");
-
-  // State
-  let prizes = [];
-  let winsToday = {}; // { title: count }
-  let rotation = 0;
-  let spinning = false;
-  let lastSpinAt = 0;
-  let lastTickIdx = null;
-
-  
-  let lastWinnerTitle = null;
-// Audio
-  let audioCtx = null;
-  const winSound = new Audio();
-  winSound.src = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYNbrOhAAAAAAD/+1DEAAAGAAGn9AAAIwRBq/00YCQAAA0gAAABEkEAhU8oBCAIgSP4IOC4fwQdP5cEAYOf/B9+sHJ/Lg+XBAGOAhj/Ln//+D/WDg5///+CH6wc/ln//y5//t4Pt/1g5//y4P8u//E/l4OBiDk5+XB/lwf/4P/h///5wAAgCCQZJQPEgAAQBJIYMNJAAADQAQRBhEGmgAAAANAJCAMJxgAg0BBggADCAdP/5YMQ1gJJkDX/2FAAJdoWv/sNAAIwABA4GI4WgIHBq1Ksf/6////X/p3Ov/////6/opCgA=";
-  winSound.preload = "auto";
-
-  // ===== LocalStorage =====
-  function saveData() {
-    const data = {
-      prizes: prizes,
-      winsToday: winsToday,
-      date: getTodayDate()
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }
-
-  function loadData() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return null;
-      const data = JSON.parse(raw);
-      
-      // Reset wins if it's a new day
-      if (data.date !== getTodayDate()) {
-        data.winsToday = {};
+    .ui{
+          position:fixed;
+          top: max(12px, env(safe-area-inset-top));
+          left: max(12px, env(safe-area-inset-left));
+          display:flex;
+          gap:10px;
+          z-index:10;
+        }
+        .chip{
+          background:var(--chip);
+          border:1px solid var(--chipBorder);
+          border-radius:999px;
+          padding:10px 14px;
+          font-weight:800;
+          font-size:13px;
+          box-shadow:0 10px 24px rgba(0,0,0,.08);
+          cursor:pointer;
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          transition: transform 0.1s;
+        }
+        .chip:active{transform:scale(.97)}
+        .chip span{opacity:.85;font-weight:800}
+    
+        .result{
+          position:fixed;
+          left:50%;
+          bottom: max(14px, env(safe-area-inset-bottom));
+          transform:translateX(-50%);
+          background:rgba(255,255,255,.95);
+          border:1px solid var(--stroke);
+          border-radius:999px;
+          padding:12px 18px;
+          box-shadow:0 10px 24px rgba(0,0,0,.12);
+          font-weight:800;
+          font-size:14px;
+          max-width:min(92vw, 740px);
+          text-align:center;
+          display:none;
+          z-index:10;
+        }
+    
+        /* Modal */
+        .modal-backdrop{
+          position:fixed;
+          inset:0;
+          background:rgba(0,0,0,.4);
+          display:none;
+          align-items:center;
+          justify-content:center;
+          padding:16px;
+          z-index:20;
+          backdrop-filter: blur(4px);
+        }
+        .modal{
+          width:min(720px, 94vw);
+          max-height:90vh;
+          background:#fff;
+          border:1px solid var(--stroke);
+          border-radius:20px;
+          box-shadow:0 25px 80px rgba(0,0,0,.25);
+          overflow:hidden;
+          display:flex;
+          flex-direction:column;
+        }
+        .modal header{
+          padding:16px 20px;
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          border-bottom:1px solid var(--stroke);
+          background:#fafbfc;
+        }
+        .modal header strong{font-size:15px;font-weight:900}
+        .modal header button{
+          border:0;
+          background:transparent;
+          font-size:20px;
+          cursor:pointer;
+          padding:8px 12px;
+          border-radius:10px;
+          transition: background 0.15s;
+        }
+        .modal header button:hover{background:#f0f0f0}
+        .modal .body{
+          padding:20px;
+          overflow-y:auto;
+          flex:1;
+        }
+    
+        .section-title{
+          font-size:14px;
+          font-weight:900;
+          color:var(--text);
+          margin:0 0 12px 0;
+          display:flex;
+          align-items:center;
+          gap:8px;
+        }
+        .section-title span{font-size:18px}
+    
+        .prize-list{
+          display:flex;
+          flex-direction:column;
+          gap:10px;
+          margin-bottom:20px;
+        }
+        .prize-item{
+          display:grid;
+          grid-template-columns: 1fr auto auto auto auto;
+          gap:10px;
+          align-items:center;
+          padding:12px 14px;
+          background:#f8f9fa;
+          border:1px solid #e9ecef;
+          border-radius:12px;
+          transition: all 0.15s;
+        }
+        .prize-item.disabled{
+          opacity:0.5;
+          background:#f0f0f0;
+        }
+        .prize-item input[type="text"]{
+          border:1px solid #ddd;
+          border-radius:8px;
+          padding:8px 12px;
+          font-size:14px;
+          font-weight:700;
+          outline:none;
+          transition: border-color 0.15s;
+        }
+        .prize-item input[type="text"]:focus{
+          border-color:var(--primary);
+        }
+        .prize-item select{
+          border:1px solid #ddd;
+          border-radius:8px;
+          padding:8px 10px;
+          font-size:13px;
+          font-weight:700;
+          cursor:pointer;
+          background:#fff;
+          min-width:100px;
+        }
+        .prize-item .toggle-btn{
+          width:36px;
+          height:36px;
+          border-radius:8px;
+          border:none;
+          cursor:pointer;
+          font-size:16px;
+          transition: all 0.15s;
+        }
+        .prize-item .toggle-btn.active{
+          background:var(--success);
+          color:#fff;
+        }
+        .prize-item .toggle-btn.inactive{
+          background:#e0e0e0;
+          color:#666;
+        }
+        .prize-item .delete-btn{
+          width:36px;
+          height:36px;
+          border-radius:8px;
+          border:none;
+          background:var(--danger);
+          color:#fff;
+          cursor:pointer;
+          font-size:16px;
+          transition: all 0.15s;
+        }
+        .prize-item .delete-btn:hover{
+          background:#b91c1c;
+        }
+    
+        .prize-item .edit-btn{
+          width:36px;
+          height:36px;
+          border-radius:8px;
+          border:1px solid #dbe2ea;
+          background:#eef2f7;
+          color:#0f172a;
+          cursor:pointer;
+          font-size:16px;
+          font-weight:900;
+          transition: all 0.15s;
+        }
+        .prize-item .edit-btn:hover{
+          background:#e6edf5;
+        }
+        .prize-item .edit-btn:disabled{
+          opacity:.45;
+          cursor:not-allowed;
+        }
+    
+        .add-prize-btn{
+          width:100%;
+          padding:14px;
+          border:2px dashed #ccc;
+          border-radius:12px;
+          background:transparent;
+          color:#666;
+          font-size:14px;
+          font-weight:800;
+          cursor:pointer;
+          transition: all 0.15s;
+          margin-bottom:20px;
+        }
+        .add-prize-btn:hover{
+          border-color:var(--primary);
+          color:var(--primary);
+          background:rgba(37, 99, 235, 0.05);
+        }
+    
+        .stats-box{
+          padding:14px 16px;
+          background:linear-gradient(135deg, #e0f2fe, #dbeafe);
+          border:1px solid #93c5fd;
+          border-radius:14px;
+          margin-bottom:16px;
+        }
+        .stats-box h4{
+          margin:0 0 10px 0;
+          font-size:13px;
+          color:#1e40af;
+        }
+        .stats-grid{
+          display:grid;
+          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+          gap:8px;
+        }
+        .stat-item{
+          display:flex;
+          justify-content:space-between;
+          font-size:12px;
+          padding:6px 10px;
+          background:rgba(255,255,255,.7);
+          border-radius:8px;
+        }
+        .stat-item .name{font-weight:700;color:#333}
+        .stat-item .count{font-weight:900;color:var(--primary)}
+        .stat-item.exhausted .count{color:var(--danger)}
+    
+        .action-row{
+          display:flex;
+          gap:10px;
+          flex-wrap:wrap;
+          margin-top:16px;
+        }
+        .btn{
+          border:0;
+          border-radius:10px;
+          padding:12px 18px;
+          cursor:pointer;
+          font-weight:800;
+          font-size:13px;
+          transition: all 0.15s;
+        }
+        .btn.primary{
+          background:var(--primary);
+          color:white;
+        }
+        .btn.primary:hover{background:#1d4ed8}
+        .btn.ghost{
+          background:#f0f0f0;
+          color:#333;
+          border:1px solid #ddd;
+        }
+        .btn.ghost:hover{background:#e5e5e5}
+        .btn.danger{
+          background:var(--danger);
+          color:white;
+        }
+        .btn.danger:hover{background:#b91c1c}
+    
+        .note{
+          margin-top:16px;
+          padding:12px 14px;
+          font-size:12px;
+          color:#666;
+          line-height:1.6;
+          background:#fffbeb;
+          border:1px solid #fcd34d;
+          border-radius:10px;
+        }
+    
+        /* Winner Modal */
+        #winnerBackdrop{
+          position:fixed;
+          inset:0;
+          background:rgba(0,0,0,.5);
+          display:none;
+          align-items:center;
+          justify-content:center;
+          padding:16px;
+          z-index:40;
+        }
+        .winner-modal{
+          width:min(500px,94vw);
+          border-radius:20px;
+          overflow:hidden;
+          box-shadow:0 30px 100px rgba(0,0,0,.4);
+          animation: popIn 0.4s ease-out;
+        }
+        @keyframes popIn{
+          0%{transform:scale(0.8);opacity:0}
+          100%{transform:scale(1);opacity:1}
+        }
+        .winner-header{
+          background:linear-gradient(135deg, #2563eb, #1d4ed8);
+          color:#fff;
+          padding:16px 20px;
+          font-weight:900;
+          font-size:16px;
+          text-align:center;
+        }
+        .winner-body{
+          background:linear-gradient(180deg, #1a1a2e, #16213e);
+          color:#fff;
+          padding:40px 24px;
+          text-align:center;
+        }
+        .winner-text{
+          font-weight:950;
+          font-size:38px;
+          line-height:1.2;
+          margin-bottom:24px;
+          text-shadow: 0 4px 20px rgba(0,0,0,.3);
+        }
+        .winner-actions{
+          display:flex;
+          gap:12px;
+          justify-content:center;
+        }
+        .winner-actions button{
+          padding:12px 24px;
+          border-radius:12px;
+          border:none;
+          font-weight:900;
+          font-size:14px;
+          cursor:pointer;
+          transition: all 0.15s;
+        }
+        .winner-actions .close-btn{
+          background:rgba(255,255,255,.15);
+          color:#fff;
+        }
+        .winner-actions .close-btn:hover{background:rgba(255,255,255,.25)}
+        .winner-actions .copy-btn{
+          background:#3b82f6;
+          color:#fff;
+        }
+        .winner-actions .copy-btn:hover{background:#2563eb}
+    
+        /* FX Canvas */
+        #fx{
+          position:fixed;
+          inset:0;
+          pointer-events:none;
+          display:none;
+          z-index:100;
+        }
+    
+        html{ -webkit-text-size-adjust:100%; }
+        body{ overscroll-behavior:none; }
+    
+        @media (max-width: 600px){
+          .prize-item{
+            grid-template-columns: 1fr;
+            gap:8px;
+          }
+          .prize-item > div:last-child{
+            display:flex;
+            gap:8px;
+            justify-content:flex-end;
+          }
+        }
+      /* ===== UX Dialog (replacement for native alert/confirm/prompt) ===== */
+      .uxd-backdrop{
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,.55);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        z-index: 9999;
+        padding: 18px;
       }
-      return data;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function getTodayDate() {
-    const now = new Date();
-    // Use Riyadh timezone
-    const options = { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' };
-    return new Intl.DateTimeFormat('en-CA', options).format(now);
-  }
-
-  // ===== Initialize =====
-  function init() {
-    const saved = loadData();
-    if (saved && saved.prizes && saved.prizes.length > 0) {
-      prizes = saved.prizes;
-      winsToday = saved.winsToday || {};
-    } else {
-      prizes = JSON.parse(JSON.stringify(DEFAULT_PRIZES));
-      winsToday = {};
-
-    // Normalize maxWinsMode (migration)
-    prizes.forEach(p => {
-      if (p.maxWinsMode !== "custom" && p.maxWinsMode !== "preset") {
-        const mw = p.maxWins;
-        const isCustomVal = Number.isFinite(mw) && mw > 0 && ![1,2,3,4,5,0,-1].includes(mw);
-        p.maxWinsMode = isCustomVal ? "custom" : "preset";
+      .uxd-modal{
+        width: min(720px, 92vw);
+        background: #2f3136;
+        color: #f2f2f2;
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius: 18px;
+        box-shadow: 0 18px 60px rgba(0,0,0,.45);
+        padding: 18px 18px 14px;
+        transform: translateY(10px);
+        opacity: 0;
+        transition: transform .18s ease, opacity .18s ease;
+        position: relative;
+        direction: rtl;
       }
-    });
-    }
+      .uxd-backdrop.show .uxd-modal{
+        transform: translateY(0);
+        opacity: 1;
+      }
+      .uxd-title{
+        font-size: 20px;
+        font-weight: 800;
+        margin: 2px 0 10px;
+      }
+      .uxd-msg{
+        font-size: 15px;
+        line-height: 1.7;
+        opacity: .95;
+        margin-bottom: 12px;
+      }
+      .uxd-input{
+        width: 100%;
+        height: 52px;
+        border-radius: 14px;
+        border: 2px solid rgba(110,206,235,.85);
+        background: rgba(0,0,0,.15);
+        color: #fff;
+        font-size: 20px;
+        padding: 8px 14px;
+        outline: none;
+      }
+      .uxd-actions{
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 14px;
+      }
+      .uxd-btn{
+        border: none;
+        border-radius: 14px;
+        padding: 12px 18px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: transform .08s ease, opacity .15s ease;
+        min-width: 92px;
+      }
+      .uxd-btn:active{ transform: scale(.98); }
+      .uxd-ok{ background: #6ECEEB; color: #0c1a1f; }
+      .uxd-cancel{ background: rgba(255,255,255,.12); color: #fff; }
+      .uxd-x{
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        border: none;
+        background: rgba(255,255,255,.10);
+        color: #fff;
+        font-size: 22px;
+        line-height: 38px;
+        cursor: pointer;
+      }
+      .uxd-x:active{ transform: scale(.98); }
     
-    resizeCanvas();
-    resizeFx();
-    draw();
-  }
-
-  // ===== Canvas Resize =====
-  function resizeCanvas() {
-    const rect = wheelWrap.getBoundingClientRect();
-    const size = Math.floor(Math.min(rect.width, rect.height));
-    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-    canvas.width = Math.floor(size * dpr);
-    canvas.height = Math.floor(size * dpr);
-    canvas.style.width = size + "px";
-    canvas.style.height = size + "px";
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw();
-  }
-
-  function resizeFx() {
-    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-    fx.width = Math.floor(window.innerWidth * dpr);
-    fx.height = Math.floor(window.innerHeight * dpr);
-    fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-
-  const ro = new ResizeObserver(resizeCanvas);
-  ro.observe(wheelWrap);
-  window.addEventListener("resize", () => { resizeCanvas(); resizeFx(); }, { passive: true });
-
-  // ===== Get Active Prizes (shown on wheel) =====
-  function getActivePrizes() {
-    return prizes.filter(p => p.enabled);
-  }
-
-  // ===== Get Available Prizes (can be won) =====
-  function getAvailablePrizes() {
-    return prizes.filter(p => {
-      if (!p.enabled) return false;
-      if (p.maxWins === -1) return false; // ended
-      if (p.maxWins === 0) return true; // unlimited
-      const used = winsToday[p.title] || 0;
-      return used < p.maxWins;
-    });
-  }
-
-  // ===== Check if prize is exhausted =====
-  function isExhausted(prize) {
-    if (prize.maxWins === -1) return true; // ended
-    if (prize.maxWins === 0) return false; // unlimited
-    const used = winsToday[prize.title] || 0;
-    return used >= prize.maxWins;
-  }
-
-  // ===== Draw Wheel =====
-  function draw() {
-    const active = getActivePrizes();
-    if (active.length === 0) {
-      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-      return;
-    }
-
-    const w = canvas.clientWidth || wheelWrap.clientWidth;
-    const h = canvas.clientHeight || wheelWrap.clientHeight;
-    const cx = w / 2, cy = h / 2;
-
-    const outerR = Math.min(cx, cy) - 18;
-    const innerHoleR = Math.max(52, outerR * 0.17);
-
-    ctx.clearRect(0, 0, w, h);
-
-    // Shadow
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx + 5, cy + 8, outerR + 10, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0,0,0,.18)";
-    ctx.filter = "blur(10px)";
-    ctx.fill();
-    ctx.restore();
-
-    // Rim
-    ctx.save();
-    const rimGrad = ctx.createRadialGradient(cx - outerR * 0.25, cy - outerR * 0.35, outerR * 0.2, cx, cy, outerR + 18);
-    rimGrad.addColorStop(0, "rgba(255,255,255,.95)");
-    rimGrad.addColorStop(0.55, "rgba(210,210,210,.95)");
-    rimGrad.addColorStop(1, "rgba(120,120,120,.95)");
-    ctx.beginPath();
-    ctx.arc(cx, cy, outerR + 14, 0, Math.PI * 2);
-    ctx.fillStyle = rimGrad;
-    ctx.fill();
-    ctx.restore();
-
-    // Clip
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
-    ctx.clip();
-
-    const n = active.length;
-    const step = (Math.PI * 2) / n;
-    const START_OFFSET = -Math.PI / 2;
-
-    for (let i = 0; i < n; i++) {
-      const pal = PALETTE[i % PALETTE.length];
-      const prize = active[i];
-      const a0 = START_OFFSET + rotation + i * step;
-      const a1 = a0 + step;
-      const exhausted = isExhausted(prize);
-
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, outerR, a0, a1);
-      ctx.closePath();
+      </style>
+    </head>
+    <body>
+      <div class="ui">
+        <div class="chip" id="openSettings">الإعدادات <span>⚙️</span></div>
+      </div>
+    
+      <div class="stage">
+        <div class="wheel-wrap" id="wheelWrap">
+          <div class="wheel-caption" id="wheelCaption">إلعبها مع تمهير</div>
+          <div class="pointer" aria-hidden="true"></div>
+          <canvas id="wheel"></canvas>
+          <div class="center-btn" id="spinBtn"><img id="spinLogo" src="https://d.top4top.io/p_3671xhikl1.jpeg" alt="Logo" /></div>
+        </div>
+      </div>
+    
+      <div class="result" id="result"></div>
+    
+      <!-- Settings Modal -->
+      <div class="modal-backdrop" id="modalBackdrop">
+        <div class="modal">
+          <header>
+            <strong>⚙️ إعدادات الجوائز</strong>
+            <button id="closeModal">✕</button>
+          </header>
+          <div class="body">
+            
+            <h3 class="section-title"><span>🎁</span> قائمة الجوائز</h3>
+            <div class="prize-list" id="prizeList"></div>
+            <button class="add-prize-btn" id="addPrizeBtn">+ إضافة جائزة جديدة</button>
+    
+            <div class="stats-box">
+              <h4>📊 إحصائيات اليوم</h4>
+              <div class="stats-grid" id="statsGrid"></div>
+            </div>
+    
+            <div class="action-row">
+              <button class="btn primary" id="saveBtn">💾 حفظ التغييرات</button>
+              <button class="btn ghost" id="resetStatsBtn">🔄 إعادة تعيين العدادات</button>
+              <button class="btn ghost" id="exportBtn">📤 تصدير</button>
+              <button class="btn ghost" id="importBtn">📥 استيراد</button>
+            </div>
+    
+            <div class="note">
+              💡 <strong>ملاحظة:</strong> الإعدادات تُحفظ تلقائياً في المتصفح. لن تضيع بعد إغلاق الصفحة!<br>
+              • <strong>∞ لا نهائي:</strong> الجائزة تطلع دائماً<br>
+              • <strong>منتهي:</strong> الجائزة تظهر بالعجلة لكن لا يمكن الفوز بها
+              • <strong>مرة / مرتين:</strong> بعد الوصول للحد، الجائزة تنقفل لبقية اليوم
+            </div>
+          </div>
+        </div>
+      </div>
+    
+      <!-- Winner Modal -->
+      <div id="winnerBackdrop">
+        <div class="winner-modal">
+          <div class="winner-header">🎉 مبروك! لدينا فائز!</div>
+          <div class="winner-body">
+            <div class="winner-text" id="winnerText"></div>
+            <div class="winner-actions">
+              <button class="close-btn" id="winnerClose">إغلاق</button>
+              <button class="copy-btn" id="winnerCopy">📋 نسخ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    
+      <!-- Hidden file input -->
+      <input type="file" id="importFile" accept="application/json" style="display:none" />
+    
+      <!-- FX Canvas -->
+      <canvas id="fx"></canvas>
+    
+      <!-- UX Dialog (replaces native alert/confirm/prompt) -->
+      <div id="uxdBackdrop" class="uxd-backdrop" style="display:none">
+        <div class="uxd-modal" role="dialog" aria-modal="true">
+          <button id="uxdX" class="uxd-x" type="button" aria-label="إغلاق">✕</button>
+          <div id="uxdTitle" class="uxd-title">تنبيه</div>
+          <div id="uxdMsg" class="uxd-msg"></div>
+          <input id="uxdInput" class="uxd-input" type="number" inputmode="numeric" min="1" step="1" />
+          <div class="uxd-actions">
+            <button id="uxdCancel" type="button" class="uxd-btn uxd-cancel">إلغاء</button>
+            <button id="uxdOk" type="button" class="uxd-btn uxd-ok">حسنا</button>
+          </div>
+        </div>
+      </div>
+    
+    <script>
+    (() => {
+      // ===== Default Prizes =====
+      const DEFAULT_PRIZES = [
+        { title: "سماعة Jpl 520BT", maxWins: 2, enabled: true },
+        { title: "ساعة شاومي", maxWins: 2, enabled: true },
+        { title: "قلم ايباد", maxWins: 1, enabled: true },
+        { title: "سماعة هواوي", maxWins: 2, enabled: true },
+        { title: "شاحن متنقل", maxWins: 1, enabled: true },
+        { title: "تابلت سامسونج", maxWins: 1, enabled: false },
+        { title: "دورة مجانية", maxWins: 0, enabled: true },
+        { title: "كود 10%", maxWins: 0, enabled: true },
+        { title: "كود 30%", maxWins: 0, enabled: true },
+        { title: "كود 50%", maxWins: 0, enabled: true },
+      ];
+    
+        const PALETTE = [
+        { fill: "#81cabd", text: "#ffffff" },
+        { fill: "#1a3151", text: "#ffffff" },
+      ];
+    
+      const STORAGE_KEY = "luckyWheelData";
+    
+      // DOM Elements
+      const wheelWrap = document.getElementById("wheelWrap");
+      const pointerEl = document.querySelector(".pointer");
+      const canvas = document.getElementById("wheel");
+      const ctx = canvas.getContext("2d");
+      const spinBtn = document.getElementById("spinBtn");
+      const resultEl = document.getElementById("result");
+      const fx = document.getElementById("fx");
+      const fxCtx = fx.getContext("2d");
+    
+      const openSettings = document.getElementById("openSettings");
+      const modalBackdrop = document.getElementById("modalBackdrop");
+      const closeModal = document.getElementById("closeModal");
+      const prizeListEl = document.getElementById("prizeList");
+      const statsGrid = document.getElementById("statsGrid");
+      const addPrizeBtn = document.getElementById("addPrizeBtn");
+      const saveBtn = document.getElementById("saveBtn");
+      const resetStatsBtn = document.getElementById("resetStatsBtn");
+    
+      // ===== Styled dialogs (replace ugly browser prompt/confirm/alert) =====
+      const uxdBackdrop = document.getElementById("uxdBackdrop");
+      const uxdTitle = document.getElementById("uxdTitle");
+      const uxdMsg = document.getElementById("uxdMsg");
+      const uxdInput = document.getElementById("uxdInput");
+      const uxdOk = document.getElementById("uxdOk");
+      const uxdCancel = document.getElementById("uxdCancel");
+      const uxdX = document.getElementById("uxdX");
+    
+      let uxdResolver = null;
+    
+      function uxdClose(result){
+        if (!uxdBackdrop) return;
+        uxdBackdrop.classList.remove('show');
+        uxdBackdrop.style.display = 'none';
+        const r = uxdResolver;
+        uxdResolver = null;
+        if (r) r(result);
+      }
+    
+      function uxdOpen({title, msg, mode, defaultValue=''}){
+        return new Promise(resolve => {
+          uxdResolver = resolve;
+          uxdTitle.textContent = title || 'تنبيه';
+          uxdMsg.textContent = msg || '';
+    
+          const wantInput = mode === 'prompt';
+          uxdInput.style.display = wantInput ? 'block' : 'none';
+          uxdCancel.style.display = mode === 'alert' ? 'none' : 'inline-block';
+    
+          if (wantInput){
+            uxdInput.value = String(defaultValue ?? '');
+            setTimeout(() => uxdInput.focus(), 0);
+          }
+    
+          uxdBackdrop.style.display = 'flex';
+          requestAnimationFrame(() => uxdBackdrop.classList.add('show'));
+    
+          const onKey = (ev) => {
+            if (!uxdResolver) return;
+            if (ev.key === 'Escape'){
+              ev.preventDefault();
+              document.removeEventListener('keydown', onKey);
+              uxdClose(null);
+            }
+            if (ev.key === 'Enter'){
+              ev.preventDefault();
+              document.removeEventListener('keydown', onKey);
+              if (mode === 'prompt') return uxdClose(uxdInput.value);
+              if (mode === 'confirm') return uxdClose(true);
+              return uxdClose(true);
+            }
+          };
+          document.addEventListener('keydown', onKey);
+    
+          const cleanup = () => document.removeEventListener('keydown', onKey);
+    
+          uxdOk.onclick = () => { cleanup();
+            if (mode === 'prompt') return uxdClose(uxdInput.value);
+            if (mode === 'confirm') return uxdClose(true);
+            return uxdClose(true);
+          };
+          uxdCancel.onclick = () => { cleanup(); uxdClose(null); };
+          uxdX.onclick = () => { cleanup(); uxdClose(null); };
+          uxdBackdrop.onclick = (e) => {
+            if (e.target === uxdBackdrop){ cleanup(); uxdClose(null); }
+          };
+        });
+      }
+    
+      async function uxdAlert(msg, title='تنبيه'){
+        await uxdOpen({title, msg, mode:'alert'});
+      }
+      async function uxdConfirm(msg, title='تأكيد'){
+        const r = await uxdOpen({title, msg, mode:'confirm'});
+        return r === true;
+      }
+      async function uxdPromptInt(msg, defaultValue=1, title='أدخل رقم'){
+        const raw = await uxdOpen({title, msg, mode:'prompt', defaultValue});
+        if (raw === null) return null;
+        const n = parseInt(String(raw).trim(), 10);
+        if (!Number.isFinite(n) || n <= 0) return null;
+        return n;
+      }
+    
+      const exportBtn = document.getElementById("exportBtn");
+      const importBtn = document.getElementById("importBtn");
+      const importFile = document.getElementById("importFile");
+    
+      const winnerBackdrop = document.getElementById("winnerBackdrop");
+      const winnerText = document.getElementById("winnerText");
+      const winnerClose = document.getElementById("winnerClose");
+      const winnerCopy = document.getElementById("winnerCopy");
+    
+      // State
+      let prizes = [];
+      let winsToday = {}; // { title: count }
+      let rotation = 0;
+      let spinning = false;
+      let lastSpinAt = 0;
+      let lastTickIdx = null;
+    
       
-      // Gray color for exhausted prizes
-      // Always keep original slice color (do not gray out when exhausted)
-      ctx.fillStyle = pal.fill;
-ctx.fill();
-
-      ctx.strokeStyle = "rgba(255,255,255,.3)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Text
-      const mid = a0 + step / 2;
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(mid);
-      ctx.textAlign = "right";
-      ctx.textBaseline = "middle";
-
-      let fs = Math.max(12, Math.min(36, outerR * 0.08));
-      if (n > 10) fs *= 0.85;
-      if (n > 14) fs *= 0.8;
-
-      ctx.font = `800 ${fs}px system-ui, Tahoma, Arial`;
-      ctx.fillStyle = pal.text;
-
-      const maxW = outerR - (innerHoleR + 40);
-      let t = prize.title;
-      while (ctx.measureText(t).width > maxW && t.length > 3) t = t.slice(0, -1);
-      if (t !== prize.title) t = t.slice(0, -1) + "…";
-
-      ctx.fillText(t, outerR - 16, 0);
-      ctx.restore();
-    }
-
-    ctx.restore();
-
-    // Center hole
-    ctx.save();
-    const ringGrad = ctx.createRadialGradient(cx - 20, cy - 20, 10, cx, cy, innerHoleR + 16);
-    ringGrad.addColorStop(0, "#ffffff");
-    ringGrad.addColorStop(0.55, "#f8f8f8");
-    ringGrad.addColorStop(1, "#e0e0e0");
-    ctx.beginPath();
-    ctx.arc(cx, cy, innerHoleR + 16, 0, Math.PI * 2);
-    ctx.fillStyle = ringGrad;
+      let lastWinnerTitle = null;
+    // Audio
+      let audioCtx = null;
+      const winSound = new Audio();
+      winSound.src = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYNbrOhAAAAAAD/+1DEAAAGAAGn9AAAIwRBq/00YCQAAA0gAAABEkEAhU8oBCAIgSP4IOC4fwQdP5cEAYOf/B9+sHJ/Lg+XBAGOAhj/Ln//+D/WDg5///+CH6wc/ln//y5//t4Pt/1g5//y4P8u//E/l4OBiDk5+XB/lwf/4P/h///5wAAgCCQZJQPEgAAQBJIYMNJAAADQAQRBhEGmgAAAANAJCAMJxgAg0BBggADCAdP/5YMQ1gJJkDX/2FAAJdoWv/sNAAIwABA4GI4WgIHBq1Ksf/6////X/p3Ov/////6/opCgA=";
+      winSound.preload = "auto";
+    
+      // ===== LocalStorage =====
+      function saveData() {
+        const data = {
+          prizes: prizes,
+          winsToday: winsToday,
+          date: getTodayDate()
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }
+    
+      function loadData() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return null;
+          const data = JSON.parse(raw);
+          
+          // Reset wins if it's a new day
+          if (data.date !== getTodayDate()) {
+            data.winsToday = {};
+          }
+          return data;
+        } catch (e) {
+          return null;
+        }
+      }
+    
+      function getTodayDate() {
+        const now = new Date();
+        // Use Riyadh timezone
+        const options = { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' };
+        return new Intl.DateTimeFormat('en-CA', options).format(now);
+      }
+    
+      // ===== Initialize =====
+      function init() {
+        const saved = loadData();
+        if (saved && saved.prizes && saved.prizes.length > 0) {
+          prizes = saved.prizes;
+          winsToday = saved.winsToday || {};
+        } else {
+          prizes = JSON.parse(JSON.stringify(DEFAULT_PRIZES));
+          winsToday = {};
+    
+        // Normalize maxWinsMode (migration)
+        prizes.forEach(p => {
+          if (p.maxWinsMode !== "custom" && p.maxWinsMode !== "preset") {
+            const mw = p.maxWins;
+            const isCustomVal = Number.isFinite(mw) && mw > 0 && ![1,2,3,4,5,0,-1].includes(mw);
+            p.maxWinsMode = isCustomVal ? "custom" : "preset";
+          }
+        });
+        }
+        
+        resizeCanvas();
+        resizeFx();
+        draw();
+      }
+    
+      // ===== Canvas Resize =====
+      function resizeCanvas() {
+        const rect = wheelWrap.getBoundingClientRect();
+        const size = Math.floor(Math.min(rect.width, rect.height));
+        const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+        canvas.width = Math.floor(size * dpr);
+        canvas.height = Math.floor(size * dpr);
+        canvas.style.width = size + "px";
+        canvas.style.height = size + "px";
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        draw();
+      }
+    
+      function resizeFx() {
+        const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+        fx.width = Math.floor(window.innerWidth * dpr);
+        fx.height = Math.floor(window.innerHeight * dpr);
+        fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+    
+      const ro = new ResizeObserver(resizeCanvas);
+      ro.observe(wheelWrap);
+      window.addEventListener("resize", () => { resizeCanvas(); resizeFx(); }, { passive: true });
+    
+      // ===== Get Active Prizes (shown on wheel) =====
+      function getActivePrizes() {
+        return prizes.filter(p => p.enabled);
+      }
+    
+      // ===== Get Available Prizes (can be won) =====
+      function getAvailablePrizes() {
+        return prizes.filter(p => {
+          if (!p.enabled) return false;
+          if (p.maxWins === -1) return false; // ended
+          if (p.maxWins === 0) return true; // unlimited
+          const used = winsToday[p.title] || 0;
+          return used < p.maxWins;
+        });
+      }
+    
+      // ===== Check if prize is exhausted =====
+      function isExhausted(prize) {
+        if (prize.maxWins === -1) return true; // ended
+        if (prize.maxWins === 0) return false; // unlimited
+        const used = winsToday[prize.title] || 0;
+        return used >= prize.maxWins;
+      }
+    
+      // ===== Draw Wheel =====
+      function draw() {
+        const active = getActivePrizes();
+        if (active.length === 0) {
+          ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+          return;
+        }
+    
+        const w = canvas.clientWidth || wheelWrap.clientWidth;
+        const h = canvas.clientHeight || wheelWrap.clientHeight;
+        const cx = w / 2, cy = h / 2;
+    
+        const outerR = Math.min(cx, cy) - 18;
+        const innerHoleR = Math.max(52, outerR * 0.17);
+    
+        ctx.clearRect(0, 0, w, h);
+    
+        // Shadow
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx + 5, cy + 8, outerR + 10, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(0,0,0,.18)";
+        ctx.filter = "blur(10px)";
+        ctx.fill();
+        ctx.restore();
+    
+        // Rim
+        ctx.save();
+        const rimGrad = ctx.createRadialGradient(cx - outerR * 0.25, cy - outerR * 0.35, outerR * 0.2, cx, cy, outerR + 18);
+        rimGrad.addColorStop(0, "rgba(255,255,255,.95)");
+        rimGrad.addColorStop(0.55, "rgba(210,210,210,.95)");
+        rimGrad.addColorStop(1, "rgba(120,120,120,.95)");
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerR + 14, 0, Math.PI * 2);
+        ctx.fillStyle = rimGrad;
+        ctx.fill();
+        ctx.restore();
+    
+        // Clip
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+        ctx.clip();
+    
+        const n = active.length;
+        const step = (Math.PI * 2) / n;
+        const START_OFFSET = -Math.PI / 2;
+    
+        for (let i = 0; i < n; i++) {
+          const pal = PALETTE[i % PALETTE.length];
+          const prize = active[i];
+          const a0 = START_OFFSET + rotation + i * step;
+          const a1 = a0 + step;
+          const exhausted = isExhausted(prize);
+    
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, outerR, a0, a1);
+          ctx.closePath();
+          
+          // Gray color for exhausted prizes
+          // Always keep original slice color (do not gray out when exhausted)
+          ctx.fillStyle = pal.fill;
     ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, innerHoleR, 0, Math.PI * 2);
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,.08)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.restore();
-
-    updatePointerColor();
-  }
-
-  // ===== Pointer Color =====
-  function normalizeAngle(a) {
-    a %= (Math.PI * 2);
-    if (a < 0) a += Math.PI * 2;
-    return a;
-  }
-
-  function getIndexAtPointer() {
-    const active = getActivePrizes();
-    const n = active.length;
-    if (n === 0) return -1;
-    const step = (Math.PI * 2) / n;
-    const START_OFFSET = -Math.PI / 2;
-    const POINTER_ANGLE = 0;
-    const rel = normalizeAngle(POINTER_ANGLE - (START_OFFSET + rotation));
-    const idx = Math.floor(rel / step);
-    return Math.min(n - 1, Math.max(0, idx));
-  }
-
-  function updatePointerColor() {
-    const active = getActivePrizes();
-    const idx = getIndexAtPointer();
-    if (idx < 0 || !active[idx]) return;
-    const prize = active[idx];
-    const exhausted = isExhausted(prize);
     
-    // Always keep pointer color matching the slice (do not gray out when exhausted)
-    const pal = PALETTE[idx % PALETTE.length];
-    pointerEl.style.setProperty("--pin", pal.fill);
-    pointerEl.style.setProperty("--pinHi", lightenColor(pal.fill, 0.5));
-  }
-
-  function lightenColor(hex, amount) {
-    const h = hex.replace("#", "");
-    const r = Math.min(255, parseInt(h.slice(0, 2), 16) + Math.floor(255 * amount));
-    const g = Math.min(255, parseInt(h.slice(2, 4), 16) + Math.floor(255 * amount));
-    const b = Math.min(255, parseInt(h.slice(4, 6), 16) + Math.floor(255 * amount));
-    return `rgb(${r},${g},${b})`;
-  }
-
-  // ===== Audio =====
-  function ensureAudio() {
-    if (!audioCtx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) audioCtx = new AC();
-    }
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
-  }
-
-  function playTick() {
-    if (!audioCtx) return;
-    try {
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = "triangle";
-      o.frequency.setValueAtTime(800 + Math.random() * 200, audioCtx.currentTime);
-      g.gain.setValueAtTime(0.1, audioCtx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-      o.connect(g).connect(audioCtx.destination);
-      o.start();
-      o.stop(audioCtx.currentTime + 0.05);
-    } catch (e) {}
-  }
-
-  function playWinSound() {
-    if (!audioCtx) return;
-    try {
-      // Cheerful win sound
-      const now = audioCtx.currentTime;
-      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-      
-      notes.forEach((freq, i) => {
-        const o = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        o.type = "sine";
-        o.frequency.setValueAtTime(freq, now + i * 0.1);
-        g.gain.setValueAtTime(0.3, now + i * 0.1);
-        g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.3);
-        o.connect(g).connect(audioCtx.destination);
-        o.start(now + i * 0.1);
-        o.stop(now + i * 0.1 + 0.3);
-      });
-    } catch (e) {}
-  }
-
-  function tickIfCrossed() {
-    const idx = getIndexAtPointer();
-    if (idx !== lastTickIdx) {
-      lastTickIdx = idx;
-      playTick();
-      wobblePointer();
-    }
-  }
-
-  function wobblePointer() {
-    if (!pointerEl) return;
-    pointerEl.animate([
-      { transform: "translateY(-50%) rotate(0deg)" },
-      { transform: "translateY(-50%) rotate(-8deg)" },
-      { transform: "translateY(-50%) rotate(0deg)" }
-    ], { duration: 80, easing: "ease-out" });
-  }
-
-  // ===== Fireworks =====
-  let fxRunning = false;
-  let fxParts = [];
-  let fxEndsAt = 0;
-  let rafFx = null;
-
-  function launchFireworks() {
-    resizeFx();
-    fx.style.display = "block";
-    fxRunning = true;
-    fxParts = [];
-    fxEndsAt = performance.now() + 3500;
-
-    // Multiple bursts - more intense!
-    for (let b = 0; b < 20; b++) {
-      setTimeout(() => {
-        spawnBurst(
-          0.1 + Math.random() * 0.8,
-          0.1 + Math.random() * 0.6,
-          80 + Math.floor(Math.random() * 50)
-        );
-      }, b * 80);
-    }
-
-    if (!rafFx) rafFx = requestAnimationFrame(fxFrame);
-  }
-
-  function spawnBurst(nx, ny, count) {
-    const x = nx * window.innerWidth;
-    const y = ny * window.innerHeight;
-    const colors = [
-      [255, 80, 80],
-      [80, 200, 255],
-      [100, 255, 130],
-      [255, 220, 80],
-      [220, 100, 255],
-      [255, 150, 200],
-      [255, 255, 100],
-      [100, 255, 255],
-    ];
-    const base = colors[Math.floor(Math.random() * colors.length)];
-
-    for (let i = 0; i < count; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 10 + Math.random() * 15;
-      fxParts.push({
-        x, y,
-        vx: Math.cos(a) * sp,
-        vy: Math.sin(a) * sp,
-        life: 60 + Math.random() * 40,
-        r: 3 + Math.random() * 4,
-        c: base,
-        g: 0.12
-      });
-    }
-  }
-
-  function fxFrame() {
-    if (!fxRunning) return;
-    const now = performance.now();
-
-    fxCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-
-    for (let i = fxParts.length - 1; i >= 0; i--) {
-      const p = fxParts[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vx *= 0.97;
-      p.vy = p.vy * 0.97 + p.g;
-      p.life -= 1;
-
-      const alpha = Math.max(0, Math.min(1, p.life / 60));
-      
-      // Outer glow
-      fxCtx.beginPath();
-      fxCtx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2);
-      fxCtx.fillStyle = `rgba(${p.c[0]},${p.c[1]},${p.c[2]},${alpha * 0.2})`;
-      fxCtx.fill();
-
-      // Middle glow
-      fxCtx.beginPath();
-      fxCtx.arc(p.x, p.y, p.r * 2, 0, Math.PI * 2);
-      fxCtx.fillStyle = `rgba(${p.c[0]},${p.c[1]},${p.c[2]},${alpha * 0.5})`;
-      fxCtx.fill();
-
-      // Core (bright)
-      fxCtx.beginPath();
-      fxCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      fxCtx.fillStyle = `rgba(${Math.min(255, p.c[0]+50)},${Math.min(255, p.c[1]+50)},${Math.min(255, p.c[2]+50)},${alpha})`;
-      fxCtx.fill();
-
-      if (p.life <= 0) fxParts.splice(i, 1);
-    }
-
-    if (now > fxEndsAt && fxParts.length === 0) {
-      fxRunning = false;
-      fx.style.display = "none";
-      rafFx = null;
-      return;
-    }
-
-    rafFx = requestAnimationFrame(fxFrame);
-  }
-
-  // ===== Spin Logic =====
-  function canSpin() {
-    const now = Date.now();
-    if (now - lastSpinAt < 600) return false;
-    lastSpinAt = now;
-    return true;
-  }
-
-  function spin() {
-    ensureAudio();
-    if (!canSpin()) return;
-    if (spinning) return;
-
-    const active = getActivePrizes();
-    const available = getAvailablePrizes();
+          ctx.strokeStyle = "rgba(255,255,255,.3)";
+          ctx.lineWidth = 2;
+          ctx.stroke();
     
-    if (available.length === 0) {
-      showResult("❌ لا توجد جوائز متاحة الآن!");
-      return;
-    }
-
-    if (active.length < 2) {
-      showResult("⚠️ يجب أن يكون هناك جائزتين على الأقل!");
-      return;
-    }
-
-    hideResult();
-    closeWinnerModal();
-
-    spinning = true;
-    spinBtn.style.pointerEvents = "none";
-    spinBtn.classList.add("spinning");
-// Pick a random available prize
-    // Pick a random available prize, avoid repeating the last winner if possible
-    let pool = available;
-    if (lastWinnerTitle && available.length > 1) {
-      const filtered = available.filter(p => p.title !== lastWinnerTitle);
-      if (filtered.length > 0) pool = filtered;
-    }
-    const targetPrize = pool[Math.floor(Math.random() * pool.length)];
+          // Text
+          const mid = a0 + step / 2;
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(mid);
+          ctx.textAlign = "right";
+          ctx.textBaseline = "middle";
     
-    // Find its index in the ACTIVE prizes (full wheel)
-    const targetIndex = active.findIndex(p => p.title === targetPrize.title);
-
-    const n = active.length;
-    const stepAng = (Math.PI * 2) / n;
-    const START_OFFSET = -Math.PI / 2;
-    const POINTER_ANGLE = 0;
-
-    // Calculate the angle where the target slice center is
-    const targetCenterAngle = START_OFFSET + (targetIndex + 0.5) * stepAng;
+          let fs = Math.max(12, Math.min(36, outerR * 0.08));
+          if (n > 10) fs *= 0.85;
+          if (n > 14) fs *= 0.8;
     
-    // We want POINTER_ANGLE to point at targetCenterAngle
-    // So: POINTER_ANGLE = targetCenterAngle + rotation
-    // Therefore: rotation = POINTER_ANGLE - targetCenterAngle
-    const baseRotation = POINTER_ANGLE - targetCenterAngle;
-
-    const startRot = rotation;
-    const fullTurns = 5 + Math.random() * 3;
+          ctx.font = `800 ${fs}px system-ui, Tahoma, Arial`;
+          ctx.fillStyle = pal.text;
     
-    // Normalize to find correct end rotation
-    let endRot = baseRotation;
-    while (endRot <= startRot) {
-      endRot += Math.PI * 2;
-    }
-    endRot += fullTurns * Math.PI * 2;
-
-    const duration = 4500 + Math.random() * 1500;
-    const t0 = performance.now();
-
-    function easeOutCubic(t) {
-      return 1 - Math.pow(1 - t, 3);
-    }
-
-    function frame(now) {
-      const t = Math.min((now - t0) / duration, 1);
-      const e = easeOutCubic(t);
-      rotation = startRot + (endRot - startRot) * e;
-
-      draw();
-      tickIfCrossed();
-
-      if (t < 1) {
+          const maxW = outerR - (innerHoleR + 40);
+          let t = prize.title;
+          while (ctx.measureText(t).width > maxW && t.length > 3) t = t.slice(0, -1);
+          if (t !== prize.title) t = t.slice(0, -1) + "…";
+    
+          ctx.fillText(t, outerR - 16, 0);
+          ctx.restore();
+        }
+    
+        ctx.restore();
+    
+        // Center hole
+        ctx.save();
+        const ringGrad = ctx.createRadialGradient(cx - 20, cy - 20, 10, cx, cy, innerHoleR + 16);
+        ringGrad.addColorStop(0, "#ffffff");
+        ringGrad.addColorStop(0.55, "#f8f8f8");
+        ringGrad.addColorStop(1, "#e0e0e0");
+        ctx.beginPath();
+        ctx.arc(cx, cy, innerHoleR + 16, 0, Math.PI * 2);
+        ctx.fillStyle = ringGrad;
+        ctx.fill();
+    
+        ctx.beginPath();
+        ctx.arc(cx, cy, innerHoleR, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(0,0,0,.08)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+    
+        updatePointerColor();
+      }
+    
+      // ===== Pointer Color =====
+      function normalizeAngle(a) {
+        a %= (Math.PI * 2);
+        if (a < 0) a += Math.PI * 2;
+        return a;
+      }
+    
+      function getIndexAtPointer() {
+        const active = getActivePrizes();
+        const n = active.length;
+        if (n === 0) return -1;
+        const step = (Math.PI * 2) / n;
+        const START_OFFSET = -Math.PI / 2;
+        const POINTER_ANGLE = 0;
+        const rel = normalizeAngle(POINTER_ANGLE - (START_OFFSET + rotation));
+        const idx = Math.floor(rel / step);
+        return Math.min(n - 1, Math.max(0, idx));
+      }
+    
+      function updatePointerColor() {
+        const active = getActivePrizes();
+        const idx = getIndexAtPointer();
+        if (idx < 0 || !active[idx]) return;
+        const prize = active[idx];
+        const exhausted = isExhausted(prize);
+        
+        // Always keep pointer color matching the slice (do not gray out when exhausted)
+        const pal = PALETTE[idx % PALETTE.length];
+        pointerEl.style.setProperty("--pin", pal.fill);
+        pointerEl.style.setProperty("--pinHi", lightenColor(pal.fill, 0.5));
+      }
+    
+      function lightenColor(hex, amount) {
+        const h = hex.replace("#", "");
+        const r = Math.min(255, parseInt(h.slice(0, 2), 16) + Math.floor(255 * amount));
+        const g = Math.min(255, parseInt(h.slice(2, 4), 16) + Math.floor(255 * amount));
+        const b = Math.min(255, parseInt(h.slice(4, 6), 16) + Math.floor(255 * amount));
+        return `rgb(${r},${g},${b})`;
+      }
+    
+      // ===== Audio =====
+      function ensureAudio() {
+        if (!audioCtx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      }
+    
+      function playTick() {
+        if (!audioCtx) return;
+        try {
+          const o = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          o.type = "triangle";
+          o.frequency.setValueAtTime(800 + Math.random() * 200, audioCtx.currentTime);
+          g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+          o.connect(g).connect(audioCtx.destination);
+          o.start();
+          o.stop(audioCtx.currentTime + 0.05);
+        } catch (e) {}
+      }
+    
+      function playWinSound() {
+        if (!audioCtx) return;
+        try {
+          // Cheerful win sound
+          const now = audioCtx.currentTime;
+          const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+          
+          notes.forEach((freq, i) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = "sine";
+            o.frequency.setValueAtTime(freq, now + i * 0.1);
+            g.gain.setValueAtTime(0.3, now + i * 0.1);
+            g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.3);
+            o.connect(g).connect(audioCtx.destination);
+            o.start(now + i * 0.1);
+            o.stop(now + i * 0.1 + 0.3);
+          });
+        } catch (e) {}
+      }
+    
+      function tickIfCrossed() {
+        const idx = getIndexAtPointer();
+        if (idx !== lastTickIdx) {
+          lastTickIdx = idx;
+          playTick();
+          wobblePointer();
+        }
+      }
+    
+      function wobblePointer() {
+        if (!pointerEl) return;
+        pointerEl.animate([
+          { transform: "translateY(-50%) rotate(0deg)" },
+          { transform: "translateY(-50%) rotate(-8deg)" },
+          { transform: "translateY(-50%) rotate(0deg)" }
+        ], { duration: 80, easing: "ease-out" });
+      }
+    
+      // ===== Fireworks =====
+      let fxRunning = false;
+      let fxParts = [];
+      let fxEndsAt = 0;
+      let rafFx = null;
+    
+      function launchFireworks() {
+        resizeFx();
+        fx.style.display = "block";
+        fxRunning = true;
+        fxParts = [];
+        fxEndsAt = performance.now() + 3500;
+    
+        // Multiple bursts - more intense!
+        for (let b = 0; b < 20; b++) {
+          setTimeout(() => {
+            spawnBurst(
+              0.1 + Math.random() * 0.8,
+              0.1 + Math.random() * 0.6,
+              80 + Math.floor(Math.random() * 50)
+            );
+          }, b * 80);
+        }
+    
+        if (!rafFx) rafFx = requestAnimationFrame(fxFrame);
+      }
+    
+      function spawnBurst(nx, ny, count) {
+        const x = nx * window.innerWidth;
+        const y = ny * window.innerHeight;
+        const colors = [
+          [255, 80, 80],
+          [80, 200, 255],
+          [100, 255, 130],
+          [255, 220, 80],
+          [220, 100, 255],
+          [255, 150, 200],
+          [255, 255, 100],
+          [100, 255, 255],
+        ];
+        const base = colors[Math.floor(Math.random() * colors.length)];
+    
+        for (let i = 0; i < count; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const sp = 10 + Math.random() * 15;
+          fxParts.push({
+            x, y,
+            vx: Math.cos(a) * sp,
+            vy: Math.sin(a) * sp,
+            life: 60 + Math.random() * 40,
+            r: 3 + Math.random() * 4,
+            c: base,
+            g: 0.12
+          });
+        }
+      }
+    
+      function fxFrame() {
+        if (!fxRunning) return;
+        const now = performance.now();
+    
+        fxCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    
+        for (let i = fxParts.length - 1; i >= 0; i--) {
+          const p = fxParts[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vx *= 0.97;
+          p.vy = p.vy * 0.97 + p.g;
+          p.life -= 1;
+    
+          const alpha = Math.max(0, Math.min(1, p.life / 60));
+          
+          // Outer glow
+          fxCtx.beginPath();
+          fxCtx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2);
+          fxCtx.fillStyle = `rgba(${p.c[0]},${p.c[1]},${p.c[2]},${alpha * 0.2})`;
+          fxCtx.fill();
+    
+          // Middle glow
+          fxCtx.beginPath();
+          fxCtx.arc(p.x, p.y, p.r * 2, 0, Math.PI * 2);
+          fxCtx.fillStyle = `rgba(${p.c[0]},${p.c[1]},${p.c[2]},${alpha * 0.5})`;
+          fxCtx.fill();
+    
+          // Core (bright)
+          fxCtx.beginPath();
+          fxCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          fxCtx.fillStyle = `rgba(${Math.min(255, p.c[0]+50)},${Math.min(255, p.c[1]+50)},${Math.min(255, p.c[2]+50)},${alpha})`;
+          fxCtx.fill();
+    
+          if (p.life <= 0) fxParts.splice(i, 1);
+        }
+    
+        if (now > fxEndsAt && fxParts.length === 0) {
+          fxRunning = false;
+          fx.style.display = "none";
+          rafFx = null;
+          return;
+        }
+    
+        rafFx = requestAnimationFrame(fxFrame);
+      }
+    
+      // ===== Spin Logic =====
+      function canSpin() {
+        const now = Date.now();
+        if (now - lastSpinAt < 600) return false;
+        lastSpinAt = now;
+        return true;
+      }
+    
+      function spin() {
+        ensureAudio();
+        if (!canSpin()) return;
+        if (spinning) return;
+    
+        const active = getActivePrizes();
+        const available = getAvailablePrizes();
+        
+        if (available.length === 0) {
+          showResult("❌ لا توجد جوائز متاحة الآن!");
+          return;
+        }
+    
+        if (active.length < 2) {
+          showResult("⚠️ يجب أن يكون هناك جائزتين على الأقل!");
+          return;
+        }
+    
+        hideResult();
+        closeWinnerModal();
+    
+        spinning = true;
+        spinBtn.style.pointerEvents = "none";
+        spinBtn.classList.add("spinning");
+    // Pick a random available prize
+        // Pick a random available prize, avoid repeating the last winner if possible
+        let pool = available;
+        if (lastWinnerTitle && available.length > 1) {
+          const filtered = available.filter(p => p.title !== lastWinnerTitle);
+          if (filtered.length > 0) pool = filtered;
+        }
+        const targetPrize = pool[Math.floor(Math.random() * pool.length)];
+        
+        // Find its index in the ACTIVE prizes (full wheel)
+        const targetIndex = active.findIndex(p => p.title === targetPrize.title);
+    
+        const n = active.length;
+        const stepAng = (Math.PI * 2) / n;
+        const START_OFFSET = -Math.PI / 2;
+        const POINTER_ANGLE = 0;
+    
+        // Calculate the angle where the target slice center is
+        const targetCenterAngle = START_OFFSET + (targetIndex + 0.5) * stepAng;
+        
+        // We want POINTER_ANGLE to point at targetCenterAngle
+        // So: POINTER_ANGLE = targetCenterAngle + rotation
+        // Therefore: rotation = POINTER_ANGLE - targetCenterAngle
+        const baseRotation = POINTER_ANGLE - targetCenterAngle;
+    
+        const startRot = rotation;
+        const fullTurns = 5 + Math.random() * 3;
+        
+        // Normalize to find correct end rotation
+        let endRot = baseRotation;
+        while (endRot <= startRot) {
+          endRot += Math.PI * 2;
+        }
+        endRot += fullTurns * Math.PI * 2;
+    
+        const duration = 4500 + Math.random() * 1500;
+        const t0 = performance.now();
+    
+        function easeOutCubic(t) {
+          return 1 - Math.pow(1 - t, 3);
+        }
+    
+        function frame(now) {
+          const t = Math.min((now - t0) / duration, 1);
+          const e = easeOutCubic(t);
+          rotation = startRot + (endRot - startRot) * e;
+    
+          draw();
+          tickIfCrossed();
+    
+          if (t < 1) {
+            requestAnimationFrame(frame);
+          } else {
+            spinning = false;
+            spinBtn.style.pointerEvents = "auto";
+            spinBtn.classList.remove("spinning");
+    finalizeWinner();
+          }
+        }
+    
         requestAnimationFrame(frame);
-      } else {
-        spinning = false;
-        spinBtn.style.pointerEvents = "auto";
-        spinBtn.classList.remove("spinning");
-finalizeWinner();
       }
-    }
-
-    requestAnimationFrame(frame);
-  }
-
-  function finalizeWinner() {
-    const active = getActivePrizes();
-    const idx = getIndexAtPointer();
-    if (idx < 0 || !active[idx]) return;
-
-    const winner = active[idx];
-
-    // If landed on exhausted prize, nudge to next available (also avoid repeating last winner if possible)
-    if (isExhausted(winner)) {
-      nudgeToAvailable(lastWinnerTitle);
-      return;
-    }
-
-    // Prevent consecutive repeat if there is another available option
-    if (lastWinnerTitle && winner.title === lastWinnerTitle) {
-      // If there is any other non-exhausted slice, nudge away from the repeated one
-      const hasOther = active.some(p => !isExhausted(p) && p.title !== lastWinnerTitle);
-      if (hasOther) {
-        nudgeToAvailable(lastWinnerTitle);
-        return;
-      }
-    }
-
-    // Remember last winner to avoid repeating the same result next spin
-    lastWinnerTitle = winner.title;
-
-    // Record win if limited
-    if (winner.maxWins > 0) {
-      winsToday[winner.title] = (winsToday[winner.title] || 0) + 1;
-    }
-
-    saveData();
-    draw(); // Update colors for exhausted prizes
-
-    // Effects first, then modal with slight delay
-    playWinSound();
-    launchFireworks();
     
-    // Show winner modal after a brief moment to see fireworks
-    setTimeout(() => {
-      showWinnerModal(winner.title);
-    }, 600);
-  }
-
-  // Nudge wheel to next available prize
-  function nudgeToAvailable(avoidTitle = null) {
-    const active = getActivePrizes();
-    const n = active.length;
-    const stepAng = (Math.PI * 2) / n;
-    const START_OFFSET = -Math.PI / 2;
-    const POINTER_ANGLE = 0;
+      function finalizeWinner() {
+        const active = getActivePrizes();
+        const idx = getIndexAtPointer();
+        if (idx < 0 || !active[idx]) return;
     
-    // Find next available prize
-    let currentIdx = getIndexAtPointer();
-    let attempts = 0;
-    let targetIdx = currentIdx;
+        const winner = active[idx];
     
-    // Search forward for available prize
-    while (attempts < n) {
-      targetIdx = (targetIdx + 1) % n;
-      const candidate = active[targetIdx];
-      if (!isExhausted(candidate) && (!avoidTitle || candidate.title !== avoidTitle)) {
-        break;
-      }
-      attempts++;
-    }
+        // If landed on exhausted prize, nudge to next available (also avoid repeating last winner if possible)
+        if (isExhausted(winner)) {
+          nudgeToAvailable(lastWinnerTitle);
+          return;
+        }
     
-    const finalCandidate = active[targetIdx];
-    if (attempts >= n || isExhausted(finalCandidate) || (avoidTitle && finalCandidate.title === avoidTitle)) {
-      showResult("❌ لا توجد جوائز متاحة!");
-      return;
-    }
-
-    // Calculate rotation to reach target center
-    const targetCenterAngle = START_OFFSET + (targetIdx + 0.5) * stepAng;
-    const targetRot = POINTER_ANGLE - targetCenterAngle;
+        // Prevent consecutive repeat if there is another available option
+        if (lastWinnerTitle && winner.title === lastWinnerTitle) {
+          // If there is any other non-exhausted slice, nudge away from the repeated one
+          const hasOther = active.some(p => !isExhausted(p) && p.title !== lastWinnerTitle);
+          if (hasOther) {
+            nudgeToAvailable(lastWinnerTitle);
+            return;
+          }
+        }
     
-    const startRot = rotation;
-    
-    // Find the shortest path forward
-    let endRot = targetRot;
-    while (endRot <= startRot) {
-      endRot += Math.PI * 2;
-    }
-    
-    const duration = 800;
-    const t0 = performance.now();
-
-    function frame(now) {
-      const t = Math.min((now - t0) / duration, 1);
-      const e = 1 - Math.pow(1 - t, 2); // ease out
-      rotation = startRot + (endRot - startRot) * e;
-      draw();
-      tickIfCrossed();
-      
-      if (t < 1) {
-        requestAnimationFrame(frame);
-      } else {
-        // Now finalize with the correct prize
-        const winner = active[targetIdx];
-
         // Remember last winner to avoid repeating the same result next spin
         lastWinnerTitle = winner.title;
-
+    
+        // Record win if limited
         if (winner.maxWins > 0) {
           winsToday[winner.title] = (winsToday[winner.title] || 0) + 1;
         }
-        
+    
         saveData();
-        draw();
+        draw(); // Update colors for exhausted prizes
+    
+        // Effects first, then modal with slight delay
         playWinSound();
         launchFireworks();
         
+        // Show winner modal after a brief moment to see fireworks
         setTimeout(() => {
           showWinnerModal(winner.title);
         }, 600);
       }
-    }
     
-    requestAnimationFrame(frame);
-  }
-
-  // ===== Result & Winner Modal =====
-  function showResult(text) {
-    resultEl.textContent = text;
-    resultEl.style.display = "block";
-  }
-
-  function hideResult() {
-    resultEl.style.display = "none";
-  }
-
-  function showWinnerModal(text) {
-    winnerText.textContent = text;
-    winnerBackdrop.style.display = "flex";
-  }
-
-  function closeWinnerModal() {
-    winnerBackdrop.style.display = "none";
-  }
-
-  // ===== Settings Modal =====
-  function openModal() {
-    renderPrizeList();
-    renderStats();
-    modalBackdrop.style.display = "flex";
-  }
-
-  function closeModalFn() {
-    modalBackdrop.style.display = "none";
-  }
-
-  function renderPrizeList() {
-    prizeListEl.innerHTML = "";
-    
-    prizes.forEach((prize, index) => {
-      const item = document.createElement("div");
-      item.className = "prize-item" + (prize.enabled ? "" : " disabled");
-      
-      const isCustomMode = prize.maxWinsMode === "custom";
-      item.innerHTML = `
-        <input type="text" value="${prize.title}" data-index="${index}" class="prize-title" />
-        <select data-index="${index}" class="prize-max">
-          <option value="1" ${(!isCustomMode && prize.maxWins === 1) ? "selected" : ""}>مرة واحدة</option>
-          <option value="2" ${(!isCustomMode && prize.maxWins === 2) ? "selected" : ""}>مرتين</option>
-          <option value="3" ${(!isCustomMode && prize.maxWins === 3) ? "selected" : ""}>3 مرات</option>
-          <option value="4" ${(!isCustomMode && prize.maxWins === 4) ? "selected" : ""}>4 مرات</option>
-          <option value="5" ${(!isCustomMode && prize.maxWins === 5) ? "selected" : ""}>5 مرات</option>
-          <option value="custom" ${isCustomMode ? "selected" : ""}>عدد حر</option>
-          <option value="0" ${(!isCustomMode && prize.maxWins === 0) ? "selected" : ""}>∞ لا نهائي</option>
-          <option value="-1" ${(!isCustomMode && prize.maxWins === -1) ? "selected" : ""}>منتهي</option>
-        </select>
-        <button class="edit-btn" data-index="${index}" title="تعديل العدد" ${isCustomMode ? "" : "disabled"}>✎</button>
-        <button class="toggle-btn ${prize.enabled ? "active" : "inactive"}" data-index="${index}">
-          ${prize.enabled ? "✓" : "✗"}
-        </button>
-        <button class="delete-btn" data-index="${index}">🗑</button>
-      `;
-
-      prizeListEl.appendChild(item);
-    });
-
-    // Event listeners
-    prizeListEl.querySelectorAll(".prize-title").forEach(input => {
-      input.addEventListener("change", (e) => {
-        const idx = parseInt(e.currentTarget.dataset.index);
-        prizes[idx].title = e.target.value.trim() || "جائزة";
-      });
-    });
-
-    prizeListEl.querySelectorAll(".prize-max").forEach(select => {
-      select.addEventListener("change", async (e) => {
-        const idx = parseInt(e.currentTarget.dataset.index);
-        const prev = prizes[idx].maxWins;
-        const prevMode = prizes[idx].maxWinsMode;
-        const v = e.target.value;
-
-        if (v === "custom") {
-          const current = (!Number.isFinite(prev) || prev <= 0 || [1,2,3,4,5,0,-1].includes(prev)) ? 2 : prev;
-          const n = await uxdPromptInt("اكتب عدد المرات (رقم صحيح):", current, "عدد حر");
-          if (n === null) {
-            prizes[idx].maxWins = prev;
-            prizes[idx].maxWinsMode = prevMode;
-            renderPrizeList();
-            return;
+      // Nudge wheel to next available prize
+      function nudgeToAvailable(avoidTitle = null) {
+        const active = getActivePrizes();
+        const n = active.length;
+        const stepAng = (Math.PI * 2) / n;
+        const START_OFFSET = -Math.PI / 2;
+        const POINTER_ANGLE = 0;
+        
+        // Find next available prize
+        let currentIdx = getIndexAtPointer();
+        let attempts = 0;
+        let targetIdx = currentIdx;
+        
+        // Search forward for available prize
+        while (attempts < n) {
+          targetIdx = (targetIdx + 1) % n;
+          const candidate = active[targetIdx];
+          if (!isExhausted(candidate) && (!avoidTitle || candidate.title !== avoidTitle)) {
+            break;
           }
-          prizes[idx].maxWins = n;
-          prizes[idx].maxWinsMode = "custom";
-          renderPrizeList();
+          attempts++;
+        }
+        
+        const finalCandidate = active[targetIdx];
+        if (attempts >= n || isExhausted(finalCandidate) || (avoidTitle && finalCandidate.title === avoidTitle)) {
+          showResult("❌ لا توجد جوائز متاحة!");
           return;
         }
-
-        prizes[idx].maxWins = parseInt(v, 10);
-        prizes[idx].maxWinsMode = "preset";
-        renderPrizeList();
-      });
-    });
-
-    prizeListEl.querySelectorAll(".edit-btn").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
-        const idx = parseInt(e.currentTarget.dataset.index);
-        const prev = prizes[idx].maxWins;
-        const current = (!Number.isFinite(prev) || prev <= 0 || [1,2,3,4,5,0,-1].includes(prev)) ? 2 : prev;
-        const n = await uxdPromptInt("اكتب عدد المرات (رقم صحيح):", current, "تعديل العدد");
-        if (n === null) return;
-        prizes[idx].maxWins = n;
-        prizes[idx].maxWinsMode = "custom";
-        renderPrizeList();
-      });
-    });
-
-
-    prizeListEl.querySelectorAll(".toggle-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const idx = parseInt(e.currentTarget.dataset.index);
-        prizes[idx].enabled = !prizes[idx].enabled;
-        renderPrizeList();
-      });
-    });
-
-    prizeListEl.querySelectorAll(".delete-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const idx = parseInt(e.currentTarget.dataset.index);
-        if (prizes.length > 2) {
-          prizes.splice(idx, 1);
-          renderPrizeList();
-        } else {
-          uxdAlert("يجب أن يكون هناك جائزتين على الأقل!");
-        }
-      });
-    });
-  }
-
-  function renderStats() {
-    const limited = prizes.filter(p => p.maxWins !== 0); // include ended (-1) and limited (>0)
     
-    if (limited.length === 0) {
-      statsGrid.innerHTML = '<div style="color:#666;font-size:12px">لا توجد جوائز محدودة</div>';
-      return;
-    }
-
-    statsGrid.innerHTML = limited.map(p => {
-      const used = winsToday[p.title] || 0;
-      const remaining = p.maxWins - used;
-      const exhausted = remaining <= 0;
-      const disabled = !p.enabled;
-      
-      return `
-        <div class="stat-item ${exhausted ? "exhausted" : ""}">
-          <span class="name">${p.title}${disabled ? " (معطل)" : ""}</span>
-          <span class="count">${exhausted ? "انتهت ❌" : `متبقي ${remaining}`}</span>
-        </div>
-      `;
-    }).join("");
-  }
-
-  // ===== Export / Import =====
-  function exportData() {
-    const data = {
-      version: 2,
-      exported_at: new Date().toISOString(),
-      prizes: prizes,
-      winsToday: winsToday
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `lucky-wheel-${getTodayDate()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function importData(text) {
-    try {
-      const data = JSON.parse(text);
-      if (data.prizes && Array.isArray(data.prizes) && data.prizes.length >= 2) {
-        prizes = data.prizes;
-        winsToday = data.winsToday || {};
-        saveData();
+        // Calculate rotation to reach target center
+        const targetCenterAngle = START_OFFSET + (targetIdx + 0.5) * stepAng;
+        const targetRot = POINTER_ANGLE - targetCenterAngle;
+        
+        const startRot = rotation;
+        
+        // Find the shortest path forward
+        let endRot = targetRot;
+        while (endRot <= startRot) {
+          endRot += Math.PI * 2;
+        }
+        
+        const duration = 800;
+        const t0 = performance.now();
+    
+        function frame(now) {
+          const t = Math.min((now - t0) / duration, 1);
+          const e = 1 - Math.pow(1 - t, 2); // ease out
+          rotation = startRot + (endRot - startRot) * e;
+          draw();
+          tickIfCrossed();
+          
+          if (t < 1) {
+            requestAnimationFrame(frame);
+          } else {
+            // Now finalize with the correct prize
+            const winner = active[targetIdx];
+    
+            // Remember last winner to avoid repeating the same result next spin
+            lastWinnerTitle = winner.title;
+    
+            if (winner.maxWins > 0) {
+              winsToday[winner.title] = (winsToday[winner.title] || 0) + 1;
+            }
+            
+            saveData();
+            draw();
+            playWinSound();
+            launchFireworks();
+            
+            setTimeout(() => {
+              showWinnerModal(winner.title);
+            }, 600);
+          }
+        }
+        
+        requestAnimationFrame(frame);
+      }
+    
+      // ===== Result & Winner Modal =====
+      function showResult(text) {
+        resultEl.textContent = text;
+        resultEl.style.display = "block";
+      }
+    
+      function hideResult() {
+        resultEl.style.display = "none";
+      }
+    
+      function showWinnerModal(text) {
+        winnerText.textContent = text;
+        winnerBackdrop.style.display = "flex";
+      }
+    
+      function closeWinnerModal() {
+        winnerBackdrop.style.display = "none";
+      }
+    
+      // ===== Settings Modal =====
+      function openModal() {
         renderPrizeList();
         renderStats();
-        draw();
-        showResult("✅ تم الاستيراد بنجاح!");
-      } else {
-        throw new Error("Invalid format");
+        modalBackdrop.style.display = "flex";
       }
-    } catch (e) {
-      uxdAlert("❌ ملف غير صالح!");
-    }
-  }
-
-  // ===== Event Listeners =====
-  spinBtn.addEventListener("click", spin);
-  canvas.addEventListener("click", spin);
-  canvas.addEventListener("touchend", (e) => { e.preventDefault(); spin(); }, { passive: false });
-
-  openSettings.addEventListener("click", openModal);
-  closeModal.addEventListener("click", closeModalFn);
-  modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) closeModalFn(); });
-
-  winnerClose.addEventListener("click", closeWinnerModal);
-  winnerBackdrop.addEventListener("click", (e) => { if (e.target === winnerBackdrop) closeWinnerModal(); });
-  winnerCopy.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(winnerText.textContent);
-      winnerCopy.textContent = "✅ تم النسخ!";
-      setTimeout(() => { winnerCopy.textContent = "📋 نسخ"; }, 1500);
-    } catch (e) {
-      showResult(winnerText.textContent);
-    }
-  });
-
-  addPrizeBtn.addEventListener("click", () => {
-    prizes.push({ title: "جائزة جديدة", maxWins: 0, enabled: true });
-    renderPrizeList();
-  });
-
-  saveBtn.addEventListener("click", () => {
-    saveData();
-    draw();
-    renderStats();
-    showResult("✅ تم حفظ التغييرات!");
-    setTimeout(hideResult, 2000);
-  });
-
-  resetStatsBtn.addEventListener("click", async () => {
-    if (await uxdConfirm("هل أنت متأكد من إعادة تعيين جميع العدادات؟")) {
-      winsToday = {};
-      saveData();
-      draw();
-      renderStats();
-      showResult("🔄 تم إعادة تعيين العدادات!");
-      setTimeout(hideResult, 2000);
-    }
-  });
-
-  exportBtn.addEventListener("click", exportData);
-  
-  importBtn.addEventListener("click", () => {
-    importFile.value = "";
-    importFile.click();
-  });
-
-  importFile.addEventListener("change", async () => {
-    const file = importFile.files && importFile.files[0];
-    if (file) {
-      const text = await file.text();
-      importData(text);
-    }
-  });
-
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeModalFn();
-      closeWinnerModal();
-    }
-  });
-
-  // ===== Initialize =====
-  init();
-})();
-</script>
-</body>
-</html>
+    
+      function closeModalFn() {
+        modalBackdrop.style.display = "none";
+      }
+    
+      function renderPrizeList() {
+        prizeListEl.innerHTML = "";
+        
+        prizes.forEach((prize, index) => {
+          const item = document.createElement("div");
+          item.className = "prize-item" + (prize.enabled ? "" : " disabled");
+          
+          const isCustomMode = prize.maxWinsMode === "custom";
+          item.innerHTML = `
+            <input type="text" value="${prize.title}" data-index="${index}" class="prize-title" />
+            <select data-index="${index}" class="prize-max">
+              <option value="1" ${(!isCustomMode && prize.maxWins === 1) ? "selected" : ""}>مرة واحدة</option>
+              <option value="2" ${(!isCustomMode && prize.maxWins === 2) ? "selected" : ""}>مرتين</option>
+              <option value="3" ${(!isCustomMode && prize.maxWins === 3) ? "selected" : ""}>3 مرات</option>
+              <option value="4" ${(!isCustomMode && prize.maxWins === 4) ? "selected" : ""}>4 مرات</option>
+              <option value="5" ${(!isCustomMode && prize.maxWins === 5) ? "selected" : ""}>5 مرات</option>
+              <option value="custom" ${isCustomMode ? "selected" : ""}>عدد حر</option>
+              <option value="0" ${(!isCustomMode && prize.maxWins === 0) ? "selected" : ""}>∞ لا نهائي</option>
+              <option value="-1" ${(!isCustomMode && prize.maxWins === -1) ? "selected" : ""}>منتهي</option>
+            </select>
+            <button class="edit-btn" data-index="${index}" title="تعديل العدد" ${isCustomMode ? "" : "disabled"}>✎</button>
+            <button class="toggle-btn ${prize.enabled ? "active" : "inactive"}" data-index="${index}">
+              ${prize.enabled ? "✓" : "✗"}
+            </button>
+            <button class="delete-btn" data-index="${index}">🗑</button>
+          `;
+    
+          prizeListEl.appendChild(item);
+        });
+    
+        // Event listeners
+        prizeListEl.querySelectorAll(".prize-title").forEach(input => {
+          input.addEventListener("change", (e) => {
+            const idx = parseInt(e.currentTarget.dataset.index);
+            prizes[idx].title = e.target.value.trim() || "جائزة";
+          });
+        });
+    
+        prizeListEl.querySelectorAll(".prize-max").forEach(select => {
+          select.addEventListener("change", async (e) => {
+            const idx = parseInt(e.currentTarget.dataset.index);
+            const prev = prizes[idx].maxWins;
+            const prevMode = prizes[idx].maxWinsMode;
+            const v = e.target.value;
+    
+            if (v === "custom") {
+              const current = (!Number.isFinite(prev) || prev <= 0 || [1,2,3,4,5,0,-1].includes(prev)) ? 2 : prev;
+              const n = await uxdPromptInt("اكتب عدد المرات (رقم صحيح):", current, "عدد حر");
+              if (n === null) {
+                prizes[idx].maxWins = prev;
+                prizes[idx].maxWinsMode = prevMode;
+                renderPrizeList();
+                return;
+              }
+              prizes[idx].maxWins = n;
+              prizes[idx].maxWinsMode = "custom";
+              renderPrizeList();
+              return;
+            }
+    
+            prizes[idx].maxWins = parseInt(v, 10);
+            prizes[idx].maxWinsMode = "preset";
+            renderPrizeList();
+          });
+        });
+    
+        prizeListEl.querySelectorAll(".edit-btn").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            const idx = parseInt(e.currentTarget.dataset.index);
+            const prev = prizes[idx].maxWins;
+            const current = (!Number.isFinite(prev) || prev <= 0 || [1,2,3,4,5,0,-1].includes(prev)) ? 2 : prev;
+            const n = await uxdPromptInt("اكتب عدد المرات (رقم صحيح):", current, "تعديل العدد");
+            if (n === null) return;
+            prizes[idx].maxWins = n;
+            prizes[idx].maxWinsMode = "custom";
+            renderPrizeList();
+          });
+        });
+    
+    
+        prizeListEl.querySelectorAll(".toggle-btn").forEach(btn => {
+          btn.addEventListener("click", (e) => {
+            const idx = parseInt(e.currentTarget.dataset.index);
+            prizes[idx].enabled = !prizes[idx].enabled;
+            renderPrizeList();
+          });
+        });
+    
+        prizeListEl.querySelectorAll(".delete-btn").forEach(btn => {
+          btn.addEventListener("click", (e) => {
+            const idx = parseInt(e.currentTarget.dataset.index);
+            if (prizes.length > 2) {
+              prizes.splice(idx, 1);
+              renderPrizeList();
+            } else {
+              uxdAlert("يجب أن يكون هناك جائزتين على الأقل!");
+            }
+          });
+        });
+      }
+    
+      function renderStats() {
+        const limited = prizes.filter(p => p.maxWins !== 0); // include ended (-1) and limited (>0)
+        
+        if (limited.length === 0) {
+          statsGrid.innerHTML = '<div style="color:#666;font-size:12px">لا توجد جوائز محدودة</div>';
+          return;
+        }
+    
+        statsGrid.innerHTML = limited.map(p => {
+          const used = winsToday[p.title] || 0;
+          const remaining = p.maxWins - used;
+          const exhausted = remaining <= 0;
+          const disabled = !p.enabled;
+          
+          return `
+            <div class="stat-item ${exhausted ? "exhausted" : ""}">
+              <span class="name">${p.title}${disabled ? " (معطل)" : ""}</span>
+              <span class="count">${exhausted ? "انتهت ❌" : `متبقي ${remaining}`}</span>
+            </div>
+          `;
+        }).join("");
+      }
+    
+      // ===== Export / Import =====
+      function exportData() {
+        const data = {
+          version: 2,
+          exported_at: new Date().toISOString(),
+          prizes: prizes,
+          winsToday: winsToday
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `lucky-wheel-${getTodayDate()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    
+      function importData(text) {
+        try {
+          const data = JSON.parse(text);
+          if (data.prizes && Array.isArray(data.prizes) && data.prizes.length >= 2) {
+            prizes = data.prizes;
+            winsToday = data.winsToday || {};
+            saveData();
+            renderPrizeList();
+            renderStats();
+            draw();
+            showResult("✅ تم الاستيراد بنجاح!");
+          } else {
+            throw new Error("Invalid format");
+          }
+        } catch (e) {
+          uxdAlert("❌ ملف غير صالح!");
+        }
+      }
+    
+      // ===== Event Listeners =====
+      spinBtn.addEventListener("click", spin);
+      canvas.addEventListener("click", spin);
+      canvas.addEventListener("touchend", (e) => { e.preventDefault(); spin(); }, { passive: false });
+    
+      openSettings.addEventListener("click", openModal);
+      closeModal.addEventListener("click", closeModalFn);
+      modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) closeModalFn(); });
+    
+      winnerClose.addEventListener("click", closeWinnerModal);
+      winnerBackdrop.addEventListener("click", (e) => { if (e.target === winnerBackdrop) closeWinnerModal(); });
+      winnerCopy.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(winnerText.textContent);
+          winnerCopy.textContent = "✅ تم النسخ!";
+          setTimeout(() => { winnerCopy.textContent = "📋 نسخ"; }, 1500);
+        } catch (e) {
+          showResult(winnerText.textContent);
+        }
+      });
+    
+      addPrizeBtn.addEventListener("click", () => {
+        prizes.push({ title: "جائزة جديدة", maxWins: 0, enabled: true });
+        renderPrizeList();
+      });
+    
+      saveBtn.addEventListener("click", () => {
+        saveData();
+        draw();
+        renderStats();
+        showResult("✅ تم حفظ التغييرات!");
+        setTimeout(hideResult, 2000);
+      });
+    
+      resetStatsBtn.addEventListener("click", async () => {
+        if (await uxdConfirm("هل أنت متأكد من إعادة تعيين جميع العدادات؟")) {
+          winsToday = {};
+          saveData();
+          draw();
+          renderStats();
+          showResult("🔄 تم إعادة تعيين العدادات!");
+          setTimeout(hideResult, 2000);
+        }
+      });
+    
+      exportBtn.addEventListener("click", exportData);
+      
+      importBtn.addEventListener("click", () => {
+        importFile.value = "";
+        importFile.click();
+      });
+    
+      importFile.addEventListener("change", async () => {
+        const file = importFile.files && importFile.files[0];
+        if (file) {
+          const text = await file.text();
+          importData(text);
+        }
+      });
+    
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          closeModalFn();
+          closeWinnerModal();
+        }
+      });
+    
+      // ===== Initialize =====
+      init();
+    })();
+    </script>
+    </body>
+    </html>
