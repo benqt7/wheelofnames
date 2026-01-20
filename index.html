@@ -34,10 +34,6 @@
         .stage{
           position:fixed;
           inset:0;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          inset:0;
           min-height:100svh;
           min-height:100dvh;
           height:100vh;
@@ -58,26 +54,7 @@
         }
     
         /* Caption above the wheel */
-                .wheel-caption{
-          position:fixed;
-          top:calc(env(safe-area-inset-top) + 12px);
-          left:50%;
-          transform:translateX(-50%);
-          padding:14px 28px;
-          background:rgba(255,255,255,.9);
-          border:1px solid var(--stroke);
-          border-radius:999px;
-          box-shadow:0 10px 24px rgba(0,0,0,.12);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          font-weight:950;
-          font-size:clamp(18px, 4vw, 32px);
-          line-height:1;
-          white-space:nowrap;
-          color:#1a3151;
-          z-index:999;
-          pointer-events:none;
-        }
+        
 
         /* حماية: لو الشاشة قصيرة، اربطه بالعجلة */
         @media (max-height: 620px){
@@ -640,10 +617,30 @@
       }
       .uxd-x:active{ transform: scale(.98); }
     
-      </style>
+      
+        .wheel-caption{
+          position:fixed;
+          top:20px;
+          left:50%;
+          transform:translateX(-50%);
+          padding:12px 24px;
+          background:#ffffff;
+          border:1px solid var(--stroke);
+          border-radius:999px;
+          box-shadow:0 8px 20px rgba(0,0,0,.15);
+          font-weight:900;
+          font-size:22px;
+          line-height:1;
+          white-space:nowrap;
+          color:#1a3151;
+          z-index:99999;
+          pointer-events:none;
+        }
+
+</style>
     </head>
     <body>
-  <div class="wheel-caption" id="wheelCaption">إلعبها مع تمهير</div>
+<div class="wheel-caption" id="wheelCaption">إلعبها مع تمهير</div>
       <div class="ui">
         <div class="chip" id="openSettings">الإعدادات <span>⚙️</span></div>
       </div>
