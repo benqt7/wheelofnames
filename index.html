@@ -59,7 +59,7 @@
           top: calc(env(safe-area-inset-top) + ((50vh - (min(80vw, 80svh, 860px) / 2)) / 2));
 
           padding:16px 34px;
-          background:rgba(255,255,255,.88);
+          background: #81cabd;
           border:1px solid var(--stroke);
           border-radius:999px;
           box-shadow:0 10px 24px rgba(0,0,0,.12);
@@ -631,7 +631,15 @@
       }
       .uxd-x:active{ transform: scale(.98); }
     
-      </style>
+      
+/* ===== Portrait 1080×1920: make caption ~5x bigger ===== */
+@media (orientation: portrait) and (width: 1080px) and (height: 1920px){
+  .wheel-caption{
+    font-size: clamp(120px, 14vw, 180px);
+  }
+}
+
+</style>
     </head>
     <body>
       <div class="ui">
